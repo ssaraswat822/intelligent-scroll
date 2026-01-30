@@ -555,8 +555,8 @@ Make the responses:
         .generate-btn { padding: 10px 18px; background: linear-gradient(135deg, #1185fe 0%, #6366f1 100%); color: white; border: none; border-radius: 20px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; min-width: 100px; }
         .generate-btn:disabled { opacity: 0.6; cursor: not-allowed; }
         .generate-btn:hover:not(:disabled) { opacity: 0.9; }
-        .random-btn { padding: 10px 14px; background: #f3f3f8; border: 1px solid #e4e4e9; border-radius: 20px; font-size: 18px; cursor: pointer; transition: all 0.15s; }
-        .random-btn:hover:not(:disabled) { background: #e8f4ff; border-color: #1185fe; transform: rotate(180deg); }
+        .random-btn { padding: 10px 14px; background: #f3f3f8; border: 1px solid #e4e4e9; border-radius: 20px; font-size: 14px; font-weight: 500; color: #666; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+        .random-btn:hover:not(:disabled) { background: #e8f4ff; border-color: #1185fe; color: #1185fe; }
         .random-btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .post { display: flex; gap: 12px; padding: 14px 16px; border-bottom: 1px solid #e4e4e9; }
         .post:hover { background: #fafafa; }
@@ -647,6 +647,9 @@ Make the responses:
         .modal-section h3 { font-size: 15px; font-weight: 600; margin-bottom: 8px; color: #333; }
         .modal-section p { font-size: 14px; color: #555; line-height: 1.6; }
         .modal-section ul { font-size: 14px; color: #555; line-height: 1.8; padding-left: 20px; }
+        .modal-footer { margin-top: 20px; padding-top: 16px; border-top: 1px solid #e4e4e9; text-align: center; }
+        .made-by-link { color: #1185fe; text-decoration: none; font-size: 14px; font-weight: 500; }
+        .made-by-link:hover { text-decoration: underline; }
         .new-post-textarea { width: 100%; min-height: 120px; padding: 14px; border: 1px solid #ddd; border-radius: 12px; font-size: 15px; font-family: inherit; resize: vertical; outline: none; }
         .new-post-textarea:focus { border-color: #1185fe; }
         .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
@@ -720,7 +723,7 @@ Make the responses:
           .topic-input-wrapper { flex: 1; gap: 6px; }
           .topic-input { padding: 8px 10px; font-size: 14px; border-radius: 16px; }
           .generate-btn { padding: 8px 12px; font-size: 13px; min-width: 70px; border-radius: 16px; }
-          .random-btn { padding: 8px 10px; font-size: 16px; }
+          .random-btn { padding: 8px 12px; font-size: 12px; }
           .post { padding: 10px; gap: 10px; }
           .post-avatar { width: 36px; height: 36px; font-size: 13px; }
           .post-name { font-size: 14px; }
@@ -787,7 +790,6 @@ Make the responses:
           </div>
           <nav className="nav">
             <NavItem active icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>} label="Home" />
-            <NavItem icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>} label="Explore" onClick={exploreTopic} />
             <NavItem icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>} label="How to Use" onClick={() => setShowHowTo(true)} />
             <NavItem icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>} label="Settings" onClick={() => setShowSettings(true)} />
           </nav>
@@ -816,7 +818,7 @@ Make the responses:
             <div className="topic-input-wrapper">
               <input ref={inputRef} type="text" className="topic-input" placeholder="Enter a topic to explore..." value={topic} onChange={(e) => setTopic(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleGenerate(topic)} disabled={isLoading} />
               <button className="generate-btn" onClick={() => handleGenerate(topic)} disabled={isLoading || !topic.trim()}>{isLoading ? 'Loading...' : 'Generate'}</button>
-              <button className="random-btn" onClick={exploreTopic} disabled={isLoading} title="Random topic">🎲</button>
+              <button className="random-btn" onClick={exploreTopic} disabled={isLoading}>Random</button>
             </div>
           </div>
           {error && <div className="error">{error}</div>}
@@ -868,6 +870,9 @@ Make the responses:
               <div className="modal-section"><h3>💬 Reply to Comments</h3><p>Click "Reply" on any comment to join the conversation! Type your response and AI will generate follow-up replies, creating a dynamic back-and-forth discussion.</p></div>
               <div className="modal-section"><h3>⚙️ Customize Your Feed</h3><p>Click <strong>Settings</strong> to adjust how educational vs. casual you want the content. Slide from fun memes and hot takes (1) to deep educational content (10).</p></div>
               <div className="modal-section"><h3>⚡ Tips</h3><ul><li>Be specific with topics for better results</li><li>Use Explore to discover random interesting topics</li><li>Adjust education level in Settings to match your mood</li><li>Your posts and replies appear with a blue highlight</li></ul></div>
+              <div className="modal-footer">
+                <a href="https://sudsaraswat.com" target="_blank" rel="noopener noreferrer" className="made-by-link">Made with 🧠 by Sud</a>
+              </div>
             </div>
           </div>
         </div>
