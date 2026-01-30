@@ -18,21 +18,22 @@ const App = () => {
   const inputRef = useRef(null);
   const currentTopicRef = useRef('');
 
-  // Topic-relevant images using Unsplash source (free, no API key needed)
-  const fetchTopicImage = (query, index = 0) => {
-    // Clean and encode the search terms for better image matching
-    const searchTerms = query
-      .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, '')
-      .split(' ')
-      .filter(word => word.length > 2)
-      .slice(0, 3)
-      .join(',');
-    
-    return {
-      url: `https://source.unsplash.com/800x450/?${encodeURIComponent(searchTerms)}&${index}`,
-      alt: `Image related to ${query}`
-    };
+  // Fetch topic-relevant images from Pexels via serverless function
+  const fetchTopicImages = async (query) => {
+    try {
+      const response = await fetch('/.netlify/functions/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'image', query }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        return data.images || [];
+      }
+    } catch (e) {
+      console.log('Image fetch failed:', e);
+    }
+    return [];
   };
 
   // Random educational topics for Explore
@@ -201,11 +202,17 @@ Make the responses:
     setPreloadedPosts([]);
     setExpandedPosts(new Set());
     try {
-      const posts = await fetchPosts(searchTopic);
-      // Add images to 2 posts (positions 1 and 4) for variety
+      // Fetch posts and images in parallel
+      const [posts, images] = await Promise.all([
+        fetchPosts(searchTopic),
+        fetchTopicImages(searchTopic)
+      ]);
+      
+      // Add images to posts (positions 1 and 4) if we have images
       const postsWithImages = posts.map((post, i) => {
-        if (i === 1 || i === 4) {
-          return { ...post, image: fetchTopicImage(searchTopic, i) };
+        if (images.length > 0 && (i === 1 || i === 4)) {
+          const imageIndex = i === 1 ? 0 : Math.min(1, images.length - 1);
+          return { ...post, image: images[imageIndex] };
         }
         return post;
       });
@@ -269,14 +276,26 @@ Make the responses:
       isUser: true
     };
     
-    setFeed(currentFeed => currentFeed.map(post => {
-      if (post.id === postId) {
-        const newComments = [...post.comments];
-        newComments.splice(commentIndex + 1, 0, userComment);
-        return { ...post, comments: newComments };
-      }
-      return post;
-    }));
+    // If commentIndex is -1, this is a new top-level comment on the post
+    if (commentIndex === -1) {
+      setFeed(currentFeed => currentFeed.map(post => {
+        if (post.id === postId) {
+          const newComments = [...(post.comments || []), userComment];
+          return { ...post, comments: newComments };
+        }
+        return post;
+      }));
+    } else {
+      // This is a reply to an existing comment
+      setFeed(currentFeed => currentFeed.map(post => {
+        if (post.id === postId) {
+          const newComments = [...post.comments];
+          newComments.splice(commentIndex + 1, 0, userComment);
+          return { ...post, comments: newComments };
+        }
+        return post;
+      }));
+    }
 
     try {
       const prompt = createReplyPrompt(originalContent, userReply);
@@ -285,9 +304,10 @@ Make the responses:
       setFeed(currentFeed => currentFeed.map(post => {
         if (post.id === postId) {
           const newComments = [...post.comments];
-          const insertIndex = newComments.findIndex((c, i) => i > commentIndex && c.isUser && c.content === userReply);
-          if (insertIndex !== -1) {
-            newComments.splice(insertIndex + 1, 0, ...aiReplies);
+          // Find the user's comment and add AI replies after it
+          const userCommentIndex = newComments.findIndex(c => c.isUser && c.content === userReply);
+          if (userCommentIndex !== -1) {
+            newComments.splice(userCommentIndex + 1, 0, ...aiReplies);
           } else {
             newComments.push(...aiReplies);
           }
@@ -342,6 +362,8 @@ Make the responses:
     const [replyingTo, setReplyingTo] = useState(null);
     const [replyText, setReplyText] = useState('');
     const [isReplying, setIsReplying] = useState(false);
+    const [newCommentText, setNewCommentText] = useState('');
+    const [isAddingComment, setIsAddingComment] = useState(false);
     const name = post.author?.name || 'Anonymous';
     const initials = name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
     const colorIndex = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
@@ -354,20 +376,26 @@ Make the responses:
       if (!replyText.trim() || isReplying) return;
       setIsReplying(true);
       try {
-        const userReplyComment = {
-          author: { name: 'You', handle: 'you.bsky.social' },
-          content: replyText,
-          timestamp: 'just now',
-          likes: 0,
-          isUser: true
-        };
-        const newReplies = await onAddReplies(post.id, commentIndex, originalContent, replyText);
+        await onAddReplies(post.id, commentIndex, originalContent, replyText);
         setReplyText('');
         setReplyingTo(null);
       } catch (err) {
         console.error('Reply error:', err);
       } finally {
         setIsReplying(false);
+      }
+    };
+
+    const handleNewComment = async () => {
+      if (!newCommentText.trim() || isAddingComment) return;
+      setIsAddingComment(true);
+      try {
+        await onAddReplies(post.id, -1, post.content, newCommentText);
+        setNewCommentText('');
+      } catch (err) {
+        console.error('Comment error:', err);
+      } finally {
+        setIsAddingComment(false);
       }
     };
 
@@ -382,11 +410,16 @@ Make the responses:
             <span className="post-time">{post.timestamp}</span>
           </div>
           <div className="post-content">{post.content}</div>
-          {post.image && <img src={post.image.url || post.image} alt={post.image.alt || 'Post image'} className="post-image" loading="lazy" />}
+          {post.image && post.image.url && (
+            <div className="post-image-container">
+              <img src={post.image.url} alt={post.image.alt || 'Post image'} className="post-image" loading="lazy" />
+              {post.image.photographer && <span className="photo-credit">📷 {post.image.photographer}</span>}
+            </div>
+          )}
           <div className="post-actions">
-            <button className={`action ${hasComments ? 'has-comments' : ''}`} onClick={() => hasComments && onToggleExpand(post.id)} style={{ cursor: hasComments ? 'pointer' : 'default' }}>
+            <button className={`action ${hasComments ? 'has-comments' : ''}`} onClick={() => onToggleExpand(post.id)}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
-              <span>{comments.length || post.replies || 0}</span>
+              <span>{comments.length || 0}</span>
             </button>
             <button className={`action ${reposted ? 'reposted' : ''}`} onClick={() => setReposted(!reposted)}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
@@ -400,7 +433,7 @@ Make the responses:
               <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="1.5"/><circle cx="6" cy="12" r="1.5"/><circle cx="18" cy="12" r="1.5"/></svg>
             </button>
           </div>
-          {showComments && hasComments && (
+          {showComments && (
             <div className="comments-section">
               {comments.map((comment, i) => {
                 const cName = comment.author?.name || 'User';
@@ -442,6 +475,20 @@ Make the responses:
                   </div>
                 );
               })}
+              <div className="new-comment-section">
+                <input 
+                  type="text" 
+                  className="reply-input" 
+                  placeholder={hasComments ? "Add to the discussion..." : "Start a discussion..."} 
+                  value={newCommentText} 
+                  onChange={e => setNewCommentText(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleNewComment()}
+                  disabled={isAddingComment}
+                />
+                <button className="reply-btn" onClick={handleNewComment} disabled={!newCommentText.trim() || isAddingComment}>
+                  {isAddingComment ? '...' : 'Comment'}
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -459,8 +506,9 @@ Make the responses:
     <div className="app">
       <style>{`
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        .app { display: flex; justify-content: center; min-height: 100vh; background: #f3f3f8; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-        .layout { display: flex; width: 100%; max-width: 1200px; }
+        html, body { overflow-x: hidden; width: 100%; }
+        .app { display: flex; justify-content: center; min-height: 100vh; background: #f3f3f8; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; width: 100%; max-width: 100vw; overflow-x: hidden; }
+        .layout { display: flex; width: 100%; max-width: 1200px; overflow-x: hidden; }
         .sidebar-left { width: 240px; padding: 10px; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; }
         .logo { display: flex; align-items: center; gap: 10px; padding: 12px 14px; margin-bottom: 8px; }
         .logo-icon { width: 38px; height: 38px; background: linear-gradient(135deg, #1185fe 0%, #6366f1 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
@@ -477,7 +525,7 @@ Make the responses:
         .sidebar-spacer { flex: 1; }
         .creator-link { display: flex; align-items: center; gap: 10px; padding: 12px 14px; margin-bottom: 10px; color: #666; text-decoration: none; font-size: 13px; border-radius: 8px; transition: all 0.15s; }
         .creator-link:hover { background: #e8e8ed; color: #1185fe; }
-        .main-feed { flex: 1; max-width: 600px; border-left: 1px solid #e4e4e9; border-right: 1px solid #e4e4e9; background: white; min-height: 100vh; }
+        .main-feed { flex: 1; max-width: 600px; min-width: 0; border-left: 1px solid #e4e4e9; border-right: 1px solid #e4e4e9; background: white; min-height: 100vh; overflow-x: hidden; }
         .feed-header { position: sticky; top: 0; background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); border-bottom: 1px solid #e4e4e9; z-index: 10; }
         .feed-logo { display: flex; justify-content: center; align-items: center; gap: 8px; padding: 14px; border-bottom: 1px solid #e4e4e9; font-weight: 700; font-size: 18px; color: #111; }
         .feed-logo-icon { font-size: 24px; }
@@ -508,7 +556,9 @@ Make the responses:
         .post-dot { color: #666; }
         .post-time { font-size: 14px; color: #666; }
         .post-content { font-size: 15px; line-height: 1.5; color: #111; margin-bottom: 12px; white-space: pre-wrap; }
-        .post-image { width: 100%; max-height: 300px; object-fit: cover; border-radius: 12px; margin-bottom: 12px; background: #f0f0f5; }
+        .post-image-container { position: relative; margin-bottom: 12px; }
+        .post-image { width: 100%; max-height: 300px; object-fit: cover; border-radius: 12px; background: #f0f0f5; display: block; }
+        .photo-credit { position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.6); color: white; font-size: 11px; padding: 3px 8px; border-radius: 4px; }
         .post-actions { display: flex; gap: 2px; margin-left: -8px; }
         .action { display: flex; align-items: center; gap: 6px; padding: 6px 10px; background: none; border: none; border-radius: 20px; color: #666; font-size: 13px; cursor: pointer; }
         .action:hover { background: #f0f0f5; }
@@ -536,6 +586,7 @@ Make the responses:
         .reply-btn { padding: 8px 16px; background: #1185fe; color: white; border: none; border-radius: 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
         .reply-btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .reply-btn:hover:not(:disabled) { background: #0969da; }
+        .new-comment-section { display: flex; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed #e4e4e9; }
         .skeleton-post { pointer-events: none; }
         .skeleton { background: linear-gradient(90deg, #eee 25%, #ddd 50%, #eee 75%); background-size: 200% 100%; animation: shimmer 1.2s infinite; border-radius: 4px; }
         @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
@@ -606,6 +657,7 @@ Make the responses:
         
         /* Mobile */
         @media (max-width: 768px) { 
+          html { font-size: 14px; }
           .layout { flex-direction: column; }
           .sidebar-left { 
             width: 100%; 
@@ -618,77 +670,98 @@ Make the responses:
             flex-direction: row;
             background: white;
             border-top: 1px solid #e4e4e9;
-            padding: 8px 16px;
+            padding: 4px 8px;
             z-index: 100;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
           }
           .sidebar-left .logo { display: none; }
           .sidebar-left .nav { flex-direction: row; justify-content: space-around; width: 100%; gap: 0; }
-          .sidebar-left .nav-item { padding: 10px 12px; flex-direction: column; gap: 4px; font-size: 11px; }
-          .sidebar-left .nav-item svg { width: 24px; height: 24px; }
+          .sidebar-left .nav-item { padding: 8px 10px; flex-direction: column; gap: 2px; font-size: 10px; }
+          .sidebar-left .nav-item svg { width: 22px; height: 22px; }
           .sidebar-left .nav-item span { display: block; }
           .sidebar-left .sidebar-spacer { display: none; }
           .sidebar-left .creator-link { display: none; }
           .sidebar-left .new-post-btn { 
             position: fixed;
-            bottom: 80px;
-            right: 16px;
-            width: 56px;
-            height: 56px;
+            bottom: 70px;
+            right: 12px;
+            width: 50px;
+            height: 50px;
             padding: 0;
             border-radius: 50%;
-            box-shadow: 0 4px 12px rgba(17,133,254,0.4);
+            box-shadow: 0 3px 10px rgba(17,133,254,0.3);
           }
           .sidebar-left .new-post-btn span { display: none; }
           .main-feed { 
             border: none; 
-            padding-bottom: 80px;
-            min-height: calc(100vh - 60px);
+            padding-bottom: 70px;
+            min-height: 100vh;
           }
           .feed-header { position: sticky; top: 0; }
-          .feed-logo { padding: 12px; font-size: 16px; }
-          .feed-tabs { }
-          .feed-tab { padding: 12px 8px; font-size: 13px; }
-          .topic-input-section { padding: 10px 12px; flex-wrap: wrap; }
-          .topic-avatar { width: 36px; height: 36px; font-size: 16px; }
-          .topic-input-wrapper { flex: 1; min-width: 200px; }
-          .topic-input { padding: 10px 12px; font-size: 16px; }
-          .generate-btn { padding: 10px 14px; font-size: 14px; min-width: 80px; }
-          .random-btn { padding: 10px 12px; }
-          .post { padding: 12px; }
-          .post-avatar { width: 40px; height: 40px; font-size: 14px; }
-          .post-content { font-size: 15px; }
-          .post-image { border-radius: 8px; max-height: 250px; }
-          .post-actions { gap: 0; }
-          .action { padding: 8px; font-size: 13px; }
-          .action svg { width: 20px; height: 20px; }
-          .comments-section { margin-top: 10px; padding-top: 10px; }
+          .feed-logo { padding: 10px; font-size: 15px; gap: 6px; }
+          .feed-logo-icon { font-size: 20px; }
+          .feed-tab { padding: 10px 6px; font-size: 12px; }
+          .topic-input-section { padding: 8px 10px; gap: 8px; }
+          .topic-avatar { width: 32px; height: 32px; font-size: 14px; }
+          .topic-input-wrapper { flex: 1; gap: 6px; }
+          .topic-input { padding: 8px 10px; font-size: 14px; border-radius: 16px; }
+          .generate-btn { padding: 8px 12px; font-size: 13px; min-width: 70px; border-radius: 16px; }
+          .random-btn { padding: 8px 10px; font-size: 16px; }
+          .post { padding: 10px; gap: 10px; }
+          .post-avatar { width: 36px; height: 36px; font-size: 13px; }
+          .post-name { font-size: 14px; }
+          .post-handle, .post-time { font-size: 12px; }
+          .post-content { font-size: 14px; margin-bottom: 8px; }
+          .post-image-container { margin-bottom: 8px; }
+          .post-image { border-radius: 8px; max-height: 200px; }
+          .photo-credit { font-size: 10px; padding: 2px 6px; }
+          .post-actions { gap: 0; margin-left: -6px; }
+          .action { padding: 6px 8px; font-size: 12px; }
+          .action svg { width: 18px; height: 18px; }
+          .comments-section { margin-top: 8px; padding-top: 8px; gap: 10px; }
           .comment { gap: 8px; }
-          .comment-avatar { width: 28px; height: 28px; font-size: 11px; }
-          .comment-content { font-size: 14px; }
-          .reply-input-section { flex-direction: column; gap: 8px; }
-          .reply-input { font-size: 16px; }
-          .reply-btn { align-self: flex-end; }
-          .empty-state { padding: 32px 16px; }
-          .empty-icon { font-size: 40px; }
-          .empty-title { font-size: 16px; }
-          .chip { padding: 10px 14px; font-size: 14px; }
-          .load-more-section { padding: 16px; }
-          .modal { width: 95%; margin: 10px; border-radius: 12px; }
-          .modal-header { padding: 14px 16px; }
-          .modal-title { font-size: 16px; }
-          .modal-body { padding: 16px; }
-          .new-post-textarea { font-size: 16px; min-height: 100px; }
-          .modal-actions { flex-direction: column; }
-          .modal-btn { width: 100%; text-align: center; }
+          .comment-avatar { width: 26px; height: 26px; font-size: 10px; }
+          .comment-name { font-size: 13px; }
+          .comment-handle, .comment-time { font-size: 11px; }
+          .comment-content { font-size: 13px; }
+          .comment-actions { font-size: 11px; gap: 12px; margin-top: 4px; }
+          .reply-input-section { gap: 6px; margin-top: 8px; }
+          .reply-input { padding: 8px 10px; font-size: 14px; border-radius: 14px; }
+          .reply-btn { padding: 8px 12px; font-size: 12px; border-radius: 14px; }
+          .new-comment-section { gap: 6px; margin-top: 10px; padding-top: 10px; }
+          .empty-state { padding: 24px 12px; }
+          .empty-icon { font-size: 36px; margin-bottom: 12px; }
+          .empty-title { font-size: 15px; }
+          .empty-text { font-size: 13px; margin-bottom: 16px; }
+          .chip { padding: 8px 12px; font-size: 12px; }
+          .load-more-section { padding: 12px; }
+          .load-more-btn { padding: 10px 20px; font-size: 13px; }
+          .preload-status { font-size: 11px; }
+          .modal { width: 94%; margin: 8px; border-radius: 12px; }
+          .modal-header { padding: 12px 14px; }
+          .modal-title { font-size: 15px; }
+          .modal-body { padding: 14px; }
+          .modal-section h3 { font-size: 14px; }
+          .modal-section p, .modal-section ul { font-size: 13px; }
+          .new-post-textarea { font-size: 14px; min-height: 80px; padding: 10px; }
+          .modal-actions { flex-direction: column; gap: 8px; }
+          .modal-btn { width: 100%; text-align: center; padding: 10px 16px; font-size: 13px; }
+          .slider-container { margin: 12px 0; }
+          .slider-label { font-size: 13px; }
+          .slider-value { font-size: 12px; padding: 3px 8px; }
+          .education-preview { font-size: 12px; padding: 10px; }
         }
         
         /* Small mobile */
-        @media (max-width: 400px) {
-          .topic-input-wrapper { flex-wrap: wrap; }
-          .topic-input { width: 100%; }
-          .generate-btn { flex: 1; }
-          .random-btn { flex: 0; }
+        @media (max-width: 380px) {
+          html { font-size: 13px; }
+          .topic-input-section { flex-wrap: wrap; }
+          .topic-avatar { display: none; }
+          .topic-input-wrapper { width: 100%; }
+          .feed-tab { font-size: 11px; padding: 8px 4px; }
+          .sidebar-left .nav-item { padding: 6px 8px; }
+          .sidebar-left .nav-item svg { width: 20px; height: 20px; }
+          .sidebar-left .nav-item span { font-size: 9px; }
         }
       `}</style>
 
