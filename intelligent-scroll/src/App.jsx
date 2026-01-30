@@ -8,29 +8,24 @@ const App = () => {
   const [activeTab, setActiveTab] = useState('discover');
   const [preloadedPosts, setPreloadedPosts] = useState([]);
   const [isPreloading, setIsPreloading] = useState(false);
-  const [animationKey, setAnimationKey] = useState(0);
   const [showHowTo, setShowHowTo] = useState(false);
   const [showNewPost, setShowNewPost] = useState(false);
   const [newPostContent, setNewPostContent] = useState('');
   const [isPostingNew, setIsPostingNew] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [educationLevel, setEducationLevel] = useState(7);
+  const [expandedPosts, setExpandedPosts] = useState(new Set());
   const inputRef = useRef(null);
   const currentTopicRef = useRef('');
-  const scrollPositionRef = useRef(0);
 
-  // Unsplash API for contextual images
-  const fetchUnsplashImage = async (query) => {
-    try {
-      const searchTerms = query.split(' ').slice(0, 3).join(',');
-      return {
-        url: `https://source.unsplash.com/800x450/?${encodeURIComponent(searchTerms)}&sig=${Date.now()}`,
-        alt: `Image related to ${query}`
-      };
-    } catch (err) {
-      console.error('Unsplash error:', err);
-      return null;
-    }
+  // Reliable image API using picsum.photos with topic-based seeding
+  const fetchUnsplashImage = (query, index = 0) => {
+    // Use a hash of the query to get consistent but varied images
+    const seed = query.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) + index;
+    return {
+      url: `https://picsum.photos/seed/${seed}/800/450`,
+      alt: `Image related to ${query}`
+    };
   };
 
   // Random educational topics for Explore
@@ -197,17 +192,16 @@ Make the responses:
     setError('');
     setFeed([]);
     setPreloadedPosts([]);
-    setAnimationKey(k => k + 1);
+    setExpandedPosts(new Set());
     try {
       const posts = await fetchPosts(searchTopic);
       // Add images to 2 posts (positions 1 and 4) for variety
-      const postsWithImages = await Promise.all(posts.map(async (post, i) => {
+      const postsWithImages = posts.map((post, i) => {
         if (i === 1 || i === 4) {
-          const image = await fetchUnsplashImage(searchTopic);
-          return { ...post, image };
+          return { ...post, image: fetchUnsplashImage(searchTopic, i) };
         }
         return post;
-      }));
+      });
       setFeed(postsWithImages);
       setTimeout(() => preloadNextBatch(searchTopic, postsWithImages), 1000);
     } catch (err) {
@@ -222,7 +216,6 @@ Make the responses:
       const newFeed = [...feed, ...preloadedPosts];
       setFeed(newFeed);
       setPreloadedPosts([]);
-      setAnimationKey(k => k + 1);
       setTimeout(() => preloadNextBatch(currentTopicRef.current, newFeed), 500);
     }
   };
@@ -258,6 +251,9 @@ Make the responses:
   };
 
   const handleAddReplies = async (postId, commentIndex, originalContent, userReply) => {
+    // Auto-expand this post so user sees their reply
+    setExpandedPosts(prev => new Set(prev).add(postId));
+    
     const userComment = {
       author: { name: 'You', handle: 'you.bsky.social' },
       content: userReply,
@@ -300,6 +296,18 @@ Make the responses:
     }
   };
 
+  const toggleExpandPost = useCallback((postId) => {
+    setExpandedPosts(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(postId)) {
+        newSet.delete(postId);
+      } else {
+        newSet.add(postId);
+      }
+      return newSet;
+    });
+  }, []);
+
   const SkeletonPost = () => (
     <div className="post skeleton-post">
       <div className="skeleton skeleton-avatar"></div>
@@ -321,11 +329,9 @@ Make the responses:
 
   const colors = ['#f87171', '#fb923c', '#fbbf24', '#a3e635', '#34d399', '#22d3d8', '#60a5fa', '#a78bfa', '#f472b6'];
 
-  const Post = React.memo(function Post({ post, index, onAddReplies }) {
+  const Post = React.memo(function Post({ post, index, onAddReplies, isExpanded, onToggleExpand }) {
     const [liked, setLiked] = useState(false);
     const [reposted, setReposted] = useState(false);
-    const [saved, setSaved] = useState(false);
-    const [showComments, setShowComments] = useState(post.isUserPost || false);
     const [replyingTo, setReplyingTo] = useState(null);
     const [replyText, setReplyText] = useState('');
     const [isReplying, setIsReplying] = useState(false);
@@ -335,6 +341,7 @@ Make the responses:
     const bgColor = post.isUserPost ? '#1185fe' : colors[colorIndex];
     const comments = post.comments || [];
     const hasComments = comments.length > 0;
+    const showComments = isExpanded || post.isUserPost;
 
     const handleReply = async (commentIndex, originalContent) => {
       if (!replyText.trim() || isReplying) return;
@@ -358,7 +365,7 @@ Make the responses:
     };
 
     return (
-      <div className={`post post-animate ${post.isUserPost ? 'user-post' : ''}`} style={{ animationDelay: `${index * 80}ms` }}>
+      <div className={`post ${post.isUserPost ? 'user-post' : ''}`} style={{ animation: 'fadeIn 0.4s ease forwards', animationDelay: `${index * 80}ms` }}>
         <div className="post-avatar" style={{ background: bgColor }}>{initials}</div>
         <div className="post-body">
           <div className="post-meta">
@@ -370,7 +377,7 @@ Make the responses:
           <div className="post-content">{post.content}</div>
           {post.image && <img src={post.image.url || post.image} alt={post.image.alt || 'Post image'} className="post-image" loading="lazy" />}
           <div className="post-actions">
-            <button className={`action ${hasComments ? 'has-comments' : ''}`} onClick={() => hasComments && setShowComments(!showComments)} style={{ cursor: hasComments ? 'pointer' : 'default' }}>
+            <button className={`action ${hasComments ? 'has-comments' : ''}`} onClick={() => hasComments && onToggleExpand(post.id)} style={{ cursor: hasComments ? 'pointer' : 'default' }}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
               <span>{comments.length || post.replies || 0}</span>
             </button>
@@ -381,9 +388,6 @@ Make the responses:
             <button className={`action ${liked ? 'liked' : ''}`} onClick={() => setLiked(!liked)}>
               <svg viewBox="0 0 24 24" fill={liked ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
               <span>{liked ? (post.likes || 0) + 1 : post.likes || 0}</span>
-            </button>
-            <button className={`action save ${saved ? 'saved' : ''}`} onClick={() => setSaved(!saved)}>
-              <svg viewBox="0 0 24 24" fill={saved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
             </button>
             <button className="action">
               <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="1.5"/><circle cx="6" cy="12" r="1.5"/><circle cx="18" cy="12" r="1.5"/></svg>
@@ -482,10 +486,12 @@ Make the responses:
         .generate-btn { padding: 10px 18px; background: linear-gradient(135deg, #1185fe 0%, #6366f1 100%); color: white; border: none; border-radius: 20px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; min-width: 100px; }
         .generate-btn:disabled { opacity: 0.6; cursor: not-allowed; }
         .generate-btn:hover:not(:disabled) { opacity: 0.9; }
-        .post { display: flex; gap: 12px; padding: 14px 16px; border-bottom: 1px solid #e4e4e9; will-change: transform, opacity; }
+        .random-btn { padding: 10px 14px; background: #f3f3f8; border: 1px solid #e4e4e9; border-radius: 20px; font-size: 18px; cursor: pointer; transition: all 0.15s; }
+        .random-btn:hover:not(:disabled) { background: #e8f4ff; border-color: #1185fe; transform: rotate(180deg); }
+        .random-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .post { display: flex; gap: 12px; padding: 14px 16px; border-bottom: 1px solid #e4e4e9; }
         .post:hover { background: #fafafa; }
         .post.user-post { background: #f0f7ff; border-left: 3px solid #1185fe; }
-        .post-animate { animation: fadeIn 0.4s ease forwards; opacity: 0; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
         .post-avatar { width: 44px; height: 44px; border-radius: 50%; background: #60a5fa; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 15px; }
         .post-body { flex: 1; min-width: 0; }
@@ -502,9 +508,6 @@ Make the responses:
         .action svg { width: 18px; height: 18px; }
         .action.liked { color: #ec4899; }
         .action.reposted { color: #22c55e; }
-        .action.saved { color: #1185fe; }
-        .action.save { margin-left: auto; }
-        .action.save span, .action:last-child span { display: none; }
         .action.has-comments { color: #1185fe; }
         .action.has-comments:hover { background: #e8f4ff; }
         .comments-section { margin-top: 12px; padding-top: 12px; border-top: 1px solid #e4e4e9; display: flex; flex-direction: column; gap: 12px; }
@@ -601,7 +604,6 @@ Make the responses:
             <NavItem active icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>} label="Home" />
             <NavItem icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>} label="Explore" onClick={exploreTopic} />
             <NavItem icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>} label="How to Use" onClick={() => setShowHowTo(true)} />
-            <NavItem icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>} label="Saved" />
             <NavItem icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>} label="Settings" onClick={() => setShowSettings(true)} />
           </nav>
           <div className="sidebar-spacer"></div>
@@ -629,11 +631,12 @@ Make the responses:
             <div className="topic-input-wrapper">
               <input ref={inputRef} type="text" className="topic-input" placeholder="Enter a topic to explore..." value={topic} onChange={(e) => setTopic(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleGenerate(topic)} disabled={isLoading} />
               <button className="generate-btn" onClick={() => handleGenerate(topic)} disabled={isLoading || !topic.trim()}>{isLoading ? 'Loading...' : 'Generate'}</button>
+              <button className="random-btn" onClick={exploreTopic} disabled={isLoading} title="Random topic">🎲</button>
             </div>
           </div>
           {error && <div className="error">{error}</div>}
-          <div className="posts" key={animationKey}>
-            {feed.map((post, i) => (<Post key={post.id || i} post={post} index={i} onAddReplies={handleAddReplies} />))}
+          <div className="posts">
+            {feed.map((post, i) => (<Post key={post.id || i} post={post} index={i} onAddReplies={handleAddReplies} isExpanded={expandedPosts.has(post.id)} onToggleExpand={toggleExpandPost} />))}
             {isLoading && [...Array(6)].map((_, i) => (<SkeletonPost key={`skeleton-${i}`} />))}
           </div>
           {feed.length > 0 && !isLoading && (
