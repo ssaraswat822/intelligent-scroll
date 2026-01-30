@@ -535,10 +535,10 @@ Make the responses:
     <div className="app">
       <style>{`
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        html, body { overflow-x: hidden; width: 100%; }
-        .app { display: flex; justify-content: center; min-height: 100vh; background: #f3f3f8; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; width: 100%; max-width: 100vw; overflow-x: hidden; }
-        .layout { display: flex; width: 100%; max-width: 1200px; overflow-x: hidden; }
-        .sidebar-left { width: 240px; padding: 10px; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; }
+        html, body { width: 100%; margin: 0; }
+        .app { display: flex; justify-content: center; min-height: 100vh; background: #f3f3f8; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; width: 100%; }
+        .layout { display: flex; width: 100%; max-width: 1200px; align-items: flex-start; }
+        .sidebar-left { width: 240px; padding: 10px; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; flex-shrink: 0; }
         .logo { display: flex; align-items: center; gap: 10px; padding: 12px 14px; margin-bottom: 8px; }
         .logo-icon { width: 38px; height: 38px; background: linear-gradient(135deg, #1185fe 0%, #6366f1 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
         .logo-text { font-weight: 700; font-size: 17px; color: #111; line-height: 1.2; }
@@ -554,7 +554,7 @@ Make the responses:
         .sidebar-spacer { flex: 1; }
         .creator-link { display: flex; align-items: center; gap: 10px; padding: 12px 14px; margin-bottom: 10px; color: #666; text-decoration: none; font-size: 13px; border-radius: 8px; transition: all 0.15s; }
         .creator-link:hover { background: #e8e8ed; color: #1185fe; }
-        .main-feed { flex: 1; max-width: 600px; min-width: 0; border-left: 1px solid #e4e4e9; border-right: 1px solid #e4e4e9; background: white; min-height: 100vh; overflow-x: hidden; }
+        .main-feed { flex: 1; max-width: 600px; min-width: 0; border-left: 1px solid #e4e4e9; border-right: 1px solid #e4e4e9; background: white; min-height: 100vh; }
         .feed-header { position: sticky; top: 0; background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); border-bottom: 1px solid #e4e4e9; z-index: 10; }
         .feed-logo { display: flex; justify-content: center; align-items: center; gap: 8px; padding: 14px; border-bottom: 1px solid #e4e4e9; font-weight: 700; font-size: 18px; color: #111; }
         .feed-logo-icon { font-size: 24px; }
@@ -639,7 +639,7 @@ Make the responses:
         .suggestions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
         .chip { padding: 8px 14px; background: #f3f3f8; border: 1px solid #e4e4e9; border-radius: 20px; font-size: 13px; color: #333; cursor: pointer; }
         .chip:hover { background: #e8f4ff; border-color: #1185fe; color: #1185fe; }
-        .sidebar-right { width: 320px; padding: 10px 16px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+        .sidebar-right { width: 320px; padding: 10px 16px; position: sticky; top: 0; height: 100vh; overflow-y: auto; flex-shrink: 0; }
         .search-box { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #ebebf0; border-radius: 8px; margin-bottom: 16px; }
         .search-box svg { width: 18px; height: 18px; color: #666; flex-shrink: 0; }
         .search-box input { flex: 1; border: none; background: none; font-size: 14px; outline: none; }
