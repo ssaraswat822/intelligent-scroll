@@ -5,7 +5,6 @@ const App = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [feed, setFeed] = useState([]);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState('discover');
   const [preloadedPosts, setPreloadedPosts] = useState([]);
   const [isPreloading, setIsPreloading] = useState(false);
   const [showHowTo, setShowHowTo] = useState(false);
@@ -62,15 +61,17 @@ const App = () => {
     }
   };
 
-  const createFeedPrompt = (searchTopic, existingHandles = []) => {
-    const excludeHandles = existingHandles.length > 0 ? `\nDo NOT reuse these handles: ${existingHandles.join(', ')}` : '';
+  const createFeedPrompt = (searchTopic, existingContent = []) => {
+    const excludeNote = existingContent.length > 0 
+      ? `\n\nIMPORTANT - DO NOT repeat or rephrase these existing posts/handles:\n${existingContent.slice(0, 20).join('\n')}\n\nGenerate COMPLETELY DIFFERENT content with NEW angles, facts, and perspectives.` 
+      : '';
     const toneModifier = getEducationPromptModifier();
-    return `Generate 6 social media posts about "${searchTopic}".${excludeHandles}
+    return `Generate 6 NEW social media posts about "${searchTopic}".${excludeNote}
 
 Return ONLY a valid JSON array with this exact structure:
 [{
   "id": "1",
-  "author": {"name": "Full Name", "handle": "username.bsky.social"},
+  "author": {"name": "Full Name", "handle": "username.scroll"},
   "content": "Post text with optional #hashtags",
   "timestamp": "2h",
   "replies": 12,
@@ -78,7 +79,7 @@ Return ONLY a valid JSON array with this exact structure:
   "likes": 234,
   "imageSearch": "specific search term for a relevant image, e.g. 'octopus underwater' or 'coffee beans roasting' - be SPECIFIC to this post's main subject",
   "comments": [
-    {"author": {"name": "Reply Name", "handle": "replier.bsky.social"}, "content": "Reply text", "timestamp": "1h", "likes": 5}
+    {"author": {"name": "Reply Name", "handle": "replier.scroll"}, "content": "Reply text", "timestamp": "1h", "likes": 5}
   ]
 }]
 
@@ -88,6 +89,7 @@ CONTENT MIX:
 - Include specific facts, numbers, or dates when relevant
 - Mix different perspectives and tones
 - Make it feel like real people discussing "${searchTopic}"
+- Each post should cover a DIFFERENT aspect or angle of the topic
 
 IMAGE SEARCH FIELD:
 - For posts 2 and 5 (indexes 1 and 4), include a specific "imageSearch" term
@@ -98,7 +100,7 @@ IMAGE SEARCH FIELD:
 AVOID: Vague statements that could apply to any topic. Be SPECIFIC to "${searchTopic}".
 
 OTHER REQUIREMENTS:
-- Each post needs unique realistic full name and handle
+- Each post needs unique realistic full name and handle (NEVER repeat names)
 - Varied engagement numbers
 - 3-4 posts should have 1-3 comments
 - 2-3 posts should have empty comments array
@@ -112,7 +114,7 @@ OTHER REQUIREMENTS:
 Generate 3-5 substantive reply comments that add value to the discussion.
 
 Return ONLY a valid JSON array:
-[{"author": {"name": "Full Name", "handle": "username.bsky.social"}, "content": "Reply text", "timestamp": "1m", "likes": 0}]
+[{"author": {"name": "Full Name", "handle": "username.scroll"}, "content": "Reply text", "timestamp": "1m", "likes": 0}]
 
 Make replies EDUCATIONAL and SUBSTANTIVE:
 - Someone adding a related fact, statistic, or piece of context that enriches the original post
@@ -134,7 +136,7 @@ The user replied:
 Generate 1-2 follow-up responses from other users that continue this specific conversation thread naturally.
 
 Return ONLY a valid JSON array:
-[{"author": {"name": "Full Name", "handle": "username.bsky.social"}, "content": "Reply text", "timestamp": "just now", "likes": 0}]
+[{"author": {"name": "Full Name", "handle": "username.scroll"}, "content": "Reply text", "timestamp": "just now", "likes": 0}]
 
 Make the responses:
 - Directly address what the user said
@@ -178,8 +180,8 @@ Make the responses:
     return JSON.parse(jsonMatch ? jsonMatch[0] : clean);
   };
 
-  const fetchPosts = async (searchTopic, existingHandles = []) => {
-    const prompt = createFeedPrompt(searchTopic, existingHandles);
+  const fetchPosts = async (searchTopic, existingContent = []) => {
+    const prompt = createFeedPrompt(searchTopic, existingContent);
     return await callAPI(prompt, 'feed');
   };
 
@@ -187,12 +189,20 @@ Make the responses:
     if (isPreloading) return;
     setIsPreloading(true);
     try {
+      // Pass existing handles AND some content hints to ensure unique posts
       const existingHandles = existingPosts.map(p => p.author?.handle).filter(Boolean);
-      const posts = await fetchPosts(searchTopic, existingHandles);
-      const taggedPosts = posts.map((p, i) => ({ ...p, id: `preload-${Date.now()}-${i}` }));
+      const existingTopics = existingPosts.slice(-6).map(p => p.content?.slice(0, 50)).filter(Boolean);
+      const posts = await fetchPosts(searchTopic, [...existingHandles, ...existingTopics]);
+      
+      // Give unique IDs with timestamp to ensure no duplicates
+      const taggedPosts = posts.map((p, i) => ({ 
+        ...p, 
+        id: `batch-${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${i}` 
+      }));
       setPreloadedPosts(taggedPosts);
     } catch (err) {
       console.error('Preload error:', err);
+      setPreloadedPosts([]); // Reset on error
     } finally {
       setIsPreloading(false);
     }
@@ -211,8 +221,11 @@ Make the responses:
     try {
       const posts = await fetchPosts(searchTopic);
       
+      // Give each post a unique ID
+      const postsWithIds = posts.map((p, i) => ({ ...p, id: `post-${Date.now()}-${i}` }));
+      
       // Find posts with imageSearch terms and fetch images in parallel
-      const imagePromises = posts.map(async (post, i) => {
+      const imagePromises = postsWithIds.map(async (post) => {
         if (post.imageSearch && post.imageSearch.trim()) {
           const images = await fetchTopicImages(post.imageSearch);
           return images.length > 0 ? images[0] : null;
@@ -223,7 +236,7 @@ Make the responses:
       const images = await Promise.all(imagePromises);
       
       // Attach images to posts
-      const postsWithImages = posts.map((post, i) => {
+      const postsWithImages = postsWithIds.map((post, i) => {
         if (images[i]) {
           return { ...post, image: images[i] };
         }
@@ -231,7 +244,8 @@ Make the responses:
       });
       
       setFeed(postsWithImages);
-      setTimeout(() => preloadNextBatch(searchTopic, postsWithImages), 1000);
+      // Start preloading next batch
+      preloadNextBatch(searchTopic, postsWithImages);
     } catch (err) {
       setError(`Failed to generate: ${err.message}`);
     } finally {
@@ -240,11 +254,12 @@ Make the responses:
   };
 
   const handleLoadMore = () => {
-    if (preloadedPosts.length > 0) {
+    if (preloadedPosts.length > 0 && !isPreloading) {
       const newFeed = [...feed, ...preloadedPosts];
       setFeed(newFeed);
       setPreloadedPosts([]);
-      setTimeout(() => preloadNextBatch(currentTopicRef.current, newFeed), 500);
+      // Start preloading next batch immediately
+      setTimeout(() => preloadNextBatch(currentTopicRef.current, newFeed), 100);
     }
   };
 
@@ -255,7 +270,7 @@ Make the responses:
       const comments = await callAPI(createCommentsPrompt(newPostContent), 'comments');
       const newPost = {
         id: `user-${Date.now()}`,
-        author: { name: 'You', handle: 'you.bsky.social' },
+        author: { name: 'You', handle: 'you.scroll' },
         content: newPostContent,
         timestamp: 'now',
         replies: comments.length,
@@ -283,7 +298,7 @@ Make the responses:
     setExpandedPosts(prev => new Set(prev).add(postId));
     
     const userComment = {
-      author: { name: 'You', handle: 'you.bsky.social' },
+      author: { name: 'You', handle: 'you.scroll' },
       content: userReply,
       timestamp: 'just now',
       likes: 0,
@@ -807,11 +822,6 @@ Make the responses:
         <main className="main-feed">
           <header className="feed-header">
             <div className="feed-logo"><span className="feed-logo-icon">🧠</span>Intelligent Scroll</div>
-            <div className="feed-tabs">
-              <div className={`feed-tab ${activeTab === 'discover' ? 'active' : ''}`} onClick={() => setActiveTab('discover')}>Discover</div>
-              <div className={`feed-tab ${activeTab === 'following' ? 'active' : ''}`} onClick={() => setActiveTab('following')}>Following</div>
-              <div className={`feed-tab ${activeTab === 'trending' ? 'active' : ''}`} onClick={() => setActiveTab('trending')}>Trending</div>
-            </div>
           </header>
           <div className="topic-input-section">
             <div className="topic-avatar">🔍</div>
@@ -828,7 +838,7 @@ Make the responses:
           </div>
           {feed.length > 0 && !isLoading && (
             <div className="load-more-section">
-              <button className="load-more-btn" onClick={handleLoadMore} disabled={preloadedPosts.length === 0 && !isPreloading}>{preloadedPosts.length > 0 ? 'Load More' : 'Preparing...'}</button>
+              <button className="load-more-btn" onClick={handleLoadMore} disabled={preloadedPosts.length === 0}>{isPreloading ? 'Loading...' : preloadedPosts.length > 0 ? 'Load More' : 'Preparing...'}</button>
               {preloadedPosts.length > 0 && (<div className="preload-status">✓ {preloadedPosts.length} posts ready</div>)}
               {isPreloading && (<div className="preload-status loading">Loading next batch...</div>)}
             </div>
@@ -844,10 +854,6 @@ Make the responses:
         </main>
 
         <aside className="sidebar-right">
-          <div className="search-box">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-            <input type="text" placeholder="Search topics..." />
-          </div>
           <div className="sidebar-section">
             <div className="sidebar-title">🔥 Trending Topics</div>
             <div className="trending-list">{trending.map((item, i) => (<div key={i} className="trending-item" onClick={() => handleGenerate(item)}><span className="trending-num">{i + 1}.</span><span>{item}</span></div>))}</div>
