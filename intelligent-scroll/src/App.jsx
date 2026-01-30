@@ -39,7 +39,7 @@ const App = () => {
       ? `\nDo NOT reuse these handles: ${existingHandles.join(', ')}` 
       : '';
     
-    return `Generate 6 social media posts about "${searchTopic}".${excludeHandles}
+    return `Generate 6 educational social media posts about "${searchTopic}".${excludeHandles}
 
 Return ONLY a valid JSON array with this exact structure:
 [{
@@ -55,29 +55,43 @@ Return ONLY a valid JSON array with this exact structure:
   ]
 }]
 
-Requirements:
+CONTENT REQUIREMENTS (this is crucial):
+- 2 posts: Fascinating facts - specific numbers, dates, discoveries, or "did you know" style info that surprises people
+- 1 post: Expert explainer - break down a complex concept in simple terms, like a professor or science communicator would
+- 1 post: Historical context or origin story - how something came to be, key moments, or evolution over time  
+- 1 post: Current developments - recent research, news, breakthroughs, or what experts are saying now
+- 1 post: Personal insight or hot take - but grounded in knowledge, like "Here's what most people get wrong about..."
+
+TONE: Think Neil deGrasse Tyson, Hank Green, or a passionate professor sharing cool stuff - enthusiastic but informative. Posts should make people feel like they learned something valuable.
+
+AVOID: Vague musings, generic statements, or content that could apply to any topic. Every post should contain SPECIFIC, CONCRETE information about "${searchTopic}".
+
+OTHER REQUIREMENTS:
 - Each post needs unique realistic full name and handle
-- Varied engagement numbers (some viral, some modest)
-- Mix of tones: informative facts, hot takes, questions, personal stories, humor
-- 3-4 posts should have 1-3 comments (thoughtful replies, debates, jokes)
+- Varied engagement numbers (educational viral posts get high engagement)
+- 3-4 posts should have 1-3 comments (follow-up questions, adding more facts, friendly debates)
 - 2-3 posts should have empty comments array
-- Make it feel like real people discussing "${searchTopic}"`;
+- Comments should also be substantive - adding context, asking good questions, or sharing related facts`;
+  };
   };
 
   const createCommentsPrompt = (postContent) => {
     return `A user posted this on social media:
 "${postContent}"
 
-Generate 3-5 realistic reply comments that provide context, reactions, or discussion.
+Generate 3-5 substantive reply comments that add value to the discussion.
 
 Return ONLY a valid JSON array:
 [{"author": {"name": "Full Name", "handle": "username.bsky.social"}, "content": "Reply text", "timestamp": "1m", "likes": 0}]
 
-Make replies diverse:
-- Someone agreeing and adding context
-- Someone with a different perspective or question  
-- Someone with a joke or observation
-- Maybe someone sharing a related experience`;
+Make replies EDUCATIONAL and SUBSTANTIVE:
+- Someone adding a related fact, statistic, or piece of context that enriches the original post
+- Someone asking a thoughtful follow-up question that goes deeper
+- Someone offering a different perspective backed by reasoning or evidence
+- Someone sharing relevant expertise or firsthand knowledge
+- Maybe one lighter comment (joke or observation) but still on-topic
+
+AVOID generic responses like "Great post!" or "So true!" - every comment should add information or provoke thought.`;
   };
 
   // API call - works with both Netlify Functions and Claude API (for preview)
