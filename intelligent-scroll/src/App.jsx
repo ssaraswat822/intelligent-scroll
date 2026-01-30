@@ -76,6 +76,7 @@ Return ONLY a valid JSON array with this exact structure:
   "replies": 12,
   "reposts": 45,
   "likes": 234,
+  "imageSearch": "specific search term for a relevant image, e.g. 'octopus underwater' or 'coffee beans roasting' - be SPECIFIC to this post's main subject",
   "comments": [
     {"author": {"name": "Reply Name", "handle": "replier.bsky.social"}, "content": "Reply text", "timestamp": "1h", "likes": 5}
   ]
@@ -88,6 +89,12 @@ CONTENT MIX:
 - Mix different perspectives and tones
 - Make it feel like real people discussing "${searchTopic}"
 
+IMAGE SEARCH FIELD:
+- For posts 2 and 5 (indexes 1 and 4), include a specific "imageSearch" term
+- The term should match the SPECIFIC subject of that post, not the general topic
+- Example: if post is about octopus brains, use "octopus" not "animal intelligence"
+- Other posts can have imageSearch as empty string ""
+
 AVOID: Vague statements that could apply to any topic. Be SPECIFIC to "${searchTopic}".
 
 OTHER REQUIREMENTS:
@@ -96,6 +103,7 @@ OTHER REQUIREMENTS:
 - 3-4 posts should have 1-3 comments
 - 2-3 posts should have empty comments array
 - Comments should be substantive`;
+  };
   };
 
   const createCommentsPrompt = (postContent) => {
@@ -202,20 +210,27 @@ Make the responses:
     setPreloadedPosts([]);
     setExpandedPosts(new Set());
     try {
-      // Fetch posts and images in parallel
-      const [posts, images] = await Promise.all([
-        fetchPosts(searchTopic),
-        fetchTopicImages(searchTopic)
-      ]);
+      const posts = await fetchPosts(searchTopic);
       
-      // Add images to posts (positions 1 and 4) if we have images
+      // Find posts with imageSearch terms and fetch images in parallel
+      const imagePromises = posts.map(async (post, i) => {
+        if (post.imageSearch && post.imageSearch.trim()) {
+          const images = await fetchTopicImages(post.imageSearch);
+          return images.length > 0 ? images[0] : null;
+        }
+        return null;
+      });
+      
+      const images = await Promise.all(imagePromises);
+      
+      // Attach images to posts
       const postsWithImages = posts.map((post, i) => {
-        if (images.length > 0 && (i === 1 || i === 4)) {
-          const imageIndex = i === 1 ? 0 : Math.min(1, images.length - 1);
-          return { ...post, image: images[imageIndex] };
+        if (images[i]) {
+          return { ...post, image: images[i] };
         }
         return post;
       });
+      
       setFeed(postsWithImages);
       setTimeout(() => preloadNextBatch(searchTopic, postsWithImages), 1000);
     } catch (err) {
