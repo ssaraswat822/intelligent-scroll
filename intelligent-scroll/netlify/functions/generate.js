@@ -1,23 +1,82 @@
-// Netlify serverless function to proxy Groq API calls
-// This keeps your API key secure on the server
+// Netlify serverless function to proxy Groq API calls and fetch images
+// This keeps your API keys secure on the server
 
 export async function handler(event) {
+  // Handle CORS preflight
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      },
+      body: '',
+    };
+  }
+
   // Only allow POST
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
 
-  const GROQ_API_KEY = process.env.GROQ_API_KEY;
-  
-  if (!GROQ_API_KEY) {
-    return { 
-      statusCode: 500, 
-      body: JSON.stringify({ error: 'GROQ_API_KEY not configured' }) 
-    };
-  }
-
   try {
-    const { prompt, type } = JSON.parse(event.body);
+    const { prompt, type, query } = JSON.parse(event.body);
+    
+    // Handle image search requests
+    if (type === 'image') {
+      const PEXELS_API_KEY = process.env.PEXELS_API_KEY;
+      
+      if (!PEXELS_API_KEY) {
+        // Return a fallback placeholder if no API key
+        return {
+          statusCode: 200,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+          body: JSON.stringify({ 
+            images: [] 
+          }),
+        };
+      }
+      
+      const searchQuery = encodeURIComponent(query || 'nature');
+      const response = await fetch(
+        `https://api.pexels.com/v1/search?query=${searchQuery}&per_page=5&orientation=landscape`,
+        {
+          headers: { 'Authorization': PEXELS_API_KEY }
+        }
+      );
+      
+      if (!response.ok) {
+        return {
+          statusCode: 200,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+          body: JSON.stringify({ images: [] }),
+        };
+      }
+      
+      const data = await response.json();
+      const images = (data.photos || []).map(photo => ({
+        url: photo.src.large,
+        alt: photo.alt || `Image related to ${query}`,
+        photographer: photo.photographer,
+      }));
+      
+      return {
+        statusCode: 200,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+        body: JSON.stringify({ images }),
+      };
+    }
+
+    // Handle text generation requests
+    const GROQ_API_KEY = process.env.GROQ_API_KEY;
+    
+    if (!GROQ_API_KEY) {
+      return { 
+        statusCode: 500, 
+        body: JSON.stringify({ error: 'GROQ_API_KEY not configured' }) 
+      };
+    }
     
     let systemPrompt = '';
     let userPrompt = prompt;
@@ -35,7 +94,7 @@ export async function handler(event) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile', // Fast and capable
+        model: 'llama-3.3-70b-versatile',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
