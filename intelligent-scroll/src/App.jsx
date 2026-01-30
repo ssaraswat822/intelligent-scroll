@@ -326,7 +326,7 @@ Make replies diverse:
         </div>
       </div>
     );
-  };
+  });
 
   const NavItem = ({ icon, label, active, onClick }) => (
     <a href="#" className={`nav-item ${active ? 'active' : ''}`} onClick={e => { e.preventDefault(); onClick?.(); }}>
