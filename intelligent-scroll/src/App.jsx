@@ -104,7 +104,6 @@ OTHER REQUIREMENTS:
 - 2-3 posts should have empty comments array
 - Comments should be substantive`;
   };
-  };
 
   const createCommentsPrompt = (postContent) => {
     return `A user posted this on social media:
