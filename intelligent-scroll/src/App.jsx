@@ -13,12 +13,56 @@ const App = () => {
   const [showNewPost, setShowNewPost] = useState(false);
   const [newPostContent, setNewPostContent] = useState('');
   const [isPostingNew, setIsPostingNew] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [educationLevel, setEducationLevel] = useState(7);
   const inputRef = useRef(null);
   const currentTopicRef = useRef('');
+  const scrollPositionRef = useRef(0);
+
+  // Unsplash API for contextual images
+  const fetchUnsplashImage = async (query) => {
+    try {
+      const searchTerms = query.split(' ').slice(0, 3).join(',');
+      return {
+        url: `https://source.unsplash.com/800x450/?${encodeURIComponent(searchTerms)}&sig=${Date.now()}`,
+        alt: `Image related to ${query}`
+      };
+    } catch (err) {
+      console.error('Unsplash error:', err);
+      return null;
+    }
+  };
+
+  // Random educational topics for Explore
+  const exploreTopic = () => {
+    const topics = [
+      'How vaccines work', 'The history of coffee', 'Black holes explained', 'Why we dream',
+      'The science of music', 'How planes fly', 'Ancient Roman engineering', 'The human microbiome',
+      'Cryptocurrency basics', 'Climate change solutions', 'The psychology of habits', 'Space exploration milestones',
+      'How the internet works', 'The history of democracy', 'Renewable energy types', 'Animal intelligence',
+      'The science of cooking', 'How memory works', 'Ocean ecosystems', 'The history of writing',
+      'Quantum computing basics', 'How languages evolve', 'The science of sleep', 'Artificial intelligence ethics',
+      'Biodiversity importance', 'The history of mathematics', 'How batteries work', 'The psychology of color',
+      'Sustainable agriculture', 'The human brain', 'Evolution explained', 'The history of medicine'
+    ];
+    const randomTopic = topics[Math.floor(Math.random() * topics.length)];
+    handleGenerate(randomTopic);
+  };
+
+  const getEducationPromptModifier = () => {
+    if (educationLevel <= 3) {
+      return `TONE: Keep it casual and fun! Mix entertainment with light facts. Think viral tweets - punchy, relatable, sometimes funny. Only 1-2 posts need specific facts, the rest can be opinions, jokes, or personal takes.`;
+    } else if (educationLevel <= 6) {
+      return `TONE: Balance entertainment and education. Mix interesting facts with personal perspectives and occasional humor. Think popular science YouTube - accessible but informative.`;
+    } else {
+      return `TONE: Think Neil deGrasse Tyson, Hank Green, or a passionate professor sharing cool stuff - enthusiastic but deeply informative. Posts should make people feel like they learned something valuable. Prioritize specific facts, data, and expert insights.`;
+    }
+  };
 
   const createFeedPrompt = (searchTopic, existingHandles = []) => {
     const excludeHandles = existingHandles.length > 0 ? `\nDo NOT reuse these handles: ${existingHandles.join(', ')}` : '';
-    return `Generate 6 educational social media posts about "${searchTopic}".${excludeHandles}
+    const toneModifier = getEducationPromptModifier();
+    return `Generate 6 social media posts about "${searchTopic}".${excludeHandles}
 
 Return ONLY a valid JSON array with this exact structure:
 [{
@@ -34,23 +78,21 @@ Return ONLY a valid JSON array with this exact structure:
   ]
 }]
 
-CONTENT REQUIREMENTS (this is crucial):
-- 2 posts: Fascinating facts - specific numbers, dates, discoveries, or "did you know" style info that surprises people
-- 1 post: Expert explainer - break down a complex concept in simple terms, like a professor or science communicator would
-- 1 post: Historical context or origin story - how something came to be, key moments, or evolution over time  
-- 1 post: Current developments - recent research, news, breakthroughs, or what experts are saying now
-- 1 post: Personal insight or hot take - but grounded in knowledge, like "Here's what most people get wrong about..."
+${toneModifier}
 
-TONE: Think Neil deGrasse Tyson, Hank Green, or a passionate professor sharing cool stuff - enthusiastic but informative. Posts should make people feel like they learned something valuable.
+CONTENT MIX:
+- Include specific facts, numbers, or dates when relevant
+- Mix different perspectives and tones
+- Make it feel like real people discussing "${searchTopic}"
 
-AVOID: Vague musings, generic statements, or content that could apply to any topic. Every post should contain SPECIFIC, CONCRETE information about "${searchTopic}".
+AVOID: Vague statements that could apply to any topic. Be SPECIFIC to "${searchTopic}".
 
 OTHER REQUIREMENTS:
 - Each post needs unique realistic full name and handle
-- Varied engagement numbers (educational viral posts get high engagement)
-- 3-4 posts should have 1-3 comments (follow-up questions, adding more facts, friendly debates)
+- Varied engagement numbers
+- 3-4 posts should have 1-3 comments
 - 2-3 posts should have empty comments array
-- Comments should also be substantive - adding context, asking good questions, or sharing related facts`;
+- Comments should be substantive`;
   };
 
   const createCommentsPrompt = (postContent) => {
@@ -70,6 +112,25 @@ Make replies EDUCATIONAL and SUBSTANTIVE:
 - Maybe one lighter comment (joke or observation) but still on-topic
 
 AVOID generic responses like "Great post!" or "So true!" - every comment should add information or provoke thought.`;
+  };
+
+  const createReplyPrompt = (originalComment, userReply) => {
+    return `In a social media thread, someone commented:
+"${originalComment}"
+
+The user replied:
+"${userReply}"
+
+Generate 1-2 follow-up responses from other users that continue this specific conversation thread naturally.
+
+Return ONLY a valid JSON array:
+[{"author": {"name": "Full Name", "handle": "username.bsky.social"}, "content": "Reply text", "timestamp": "just now", "likes": 0}]
+
+Make the responses:
+- Directly address what the user said
+- Add new information, ask a follow-up question, or offer a different angle
+- Feel like a natural continuation of the conversation
+- Be substantive, not generic`;
   };
 
   const callAPI = async (prompt, type) => {
@@ -139,8 +200,16 @@ AVOID generic responses like "Great post!" or "So true!" - every comment should 
     setAnimationKey(k => k + 1);
     try {
       const posts = await fetchPosts(searchTopic);
-      setFeed(posts);
-      setTimeout(() => preloadNextBatch(searchTopic, posts), 1000);
+      // Add images to 2 posts (positions 1 and 4) for variety
+      const postsWithImages = await Promise.all(posts.map(async (post, i) => {
+        if (i === 1 || i === 4) {
+          const image = await fetchUnsplashImage(searchTopic);
+          return { ...post, image };
+        }
+        return post;
+      }));
+      setFeed(postsWithImages);
+      setTimeout(() => preloadNextBatch(searchTopic, postsWithImages), 1000);
     } catch (err) {
       setError(`Failed to generate: ${err.message}`);
     } finally {
@@ -174,14 +243,60 @@ AVOID generic responses like "Great post!" or "So true!" - every comment should 
         comments: comments,
         isUserPost: true,
       };
-      setFeed([newPost, ...feed]);
+      // Insert at a natural position (2nd or 3rd spot if feed exists, otherwise first)
+      const insertPosition = feed.length >= 3 ? Math.floor(Math.random() * 2) + 1 : 0;
+      const newFeed = [...feed];
+      newFeed.splice(insertPosition, 0, newPost);
+      setFeed(newFeed);
       setNewPostContent('');
       setShowNewPost(false);
-      setAnimationKey(k => k + 1);
     } catch (err) {
       setError(`Failed to generate comments: ${err.message}`);
     } finally {
       setIsPostingNew(false);
+    }
+  };
+
+  const handleAddReplies = async (postId, commentIndex, originalContent, userReply) => {
+    const userComment = {
+      author: { name: 'You', handle: 'you.bsky.social' },
+      content: userReply,
+      timestamp: 'just now',
+      likes: 0,
+      isUser: true
+    };
+    
+    setFeed(currentFeed => currentFeed.map(post => {
+      if (post.id === postId) {
+        const newComments = [...post.comments];
+        newComments.splice(commentIndex + 1, 0, userComment);
+        return { ...post, comments: newComments };
+      }
+      return post;
+    }));
+
+    try {
+      const prompt = createReplyPrompt(originalContent, userReply);
+      const aiReplies = await callAPI(prompt, 'comments');
+      
+      setFeed(currentFeed => currentFeed.map(post => {
+        if (post.id === postId) {
+          const newComments = [...post.comments];
+          const insertIndex = newComments.findIndex((c, i) => i > commentIndex && c.isUser && c.content === userReply);
+          if (insertIndex !== -1) {
+            newComments.splice(insertIndex + 1, 0, ...aiReplies);
+          } else {
+            newComments.push(...aiReplies);
+          }
+          return { ...post, comments: newComments };
+        }
+        return post;
+      }));
+      
+      return aiReplies;
+    } catch (err) {
+      console.error('Failed to generate AI replies:', err);
+      return [];
     }
   };
 
@@ -206,17 +321,42 @@ AVOID generic responses like "Great post!" or "So true!" - every comment should 
 
   const colors = ['#f87171', '#fb923c', '#fbbf24', '#a3e635', '#34d399', '#22d3d8', '#60a5fa', '#a78bfa', '#f472b6'];
 
-  const Post = React.memo(function Post({ post, index }) {
+  const Post = React.memo(function Post({ post, index, onAddReplies }) {
     const [liked, setLiked] = useState(false);
     const [reposted, setReposted] = useState(false);
     const [saved, setSaved] = useState(false);
     const [showComments, setShowComments] = useState(post.isUserPost || false);
+    const [replyingTo, setReplyingTo] = useState(null);
+    const [replyText, setReplyText] = useState('');
+    const [isReplying, setIsReplying] = useState(false);
     const name = post.author?.name || 'Anonymous';
     const initials = name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
     const colorIndex = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
     const bgColor = post.isUserPost ? '#1185fe' : colors[colorIndex];
     const comments = post.comments || [];
     const hasComments = comments.length > 0;
+
+    const handleReply = async (commentIndex, originalContent) => {
+      if (!replyText.trim() || isReplying) return;
+      setIsReplying(true);
+      try {
+        const userReplyComment = {
+          author: { name: 'You', handle: 'you.bsky.social' },
+          content: replyText,
+          timestamp: 'just now',
+          likes: 0,
+          isUser: true
+        };
+        const newReplies = await onAddReplies(post.id, commentIndex, originalContent, replyText);
+        setReplyText('');
+        setReplyingTo(null);
+      } catch (err) {
+        console.error('Reply error:', err);
+      } finally {
+        setIsReplying(false);
+      }
+    };
+
     return (
       <div className={`post post-animate ${post.isUserPost ? 'user-post' : ''}`} style={{ animationDelay: `${index * 80}ms` }}>
         <div className="post-avatar" style={{ background: bgColor }}>{initials}</div>
@@ -228,6 +368,7 @@ AVOID generic responses like "Great post!" or "So true!" - every comment should 
             <span className="post-time">{post.timestamp}</span>
           </div>
           <div className="post-content">{post.content}</div>
+          {post.image && <img src={post.image.url || post.image} alt={post.image.alt || 'Post image'} className="post-image" loading="lazy" />}
           <div className="post-actions">
             <button className={`action ${hasComments ? 'has-comments' : ''}`} onClick={() => hasComments && setShowComments(!showComments)} style={{ cursor: hasComments ? 'pointer' : 'default' }}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
@@ -254,9 +395,10 @@ AVOID generic responses like "Great post!" or "So true!" - every comment should 
                 const cName = comment.author?.name || 'User';
                 const cInitials = cName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
                 const cColorIndex = cName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
+                const isUserComment = comment.isUser || comment.author?.name === 'You';
                 return (
-                  <div key={i} className="comment">
-                    <div className="comment-avatar" style={{ background: colors[cColorIndex] }}>{cInitials}</div>
+                  <div key={i} className={`comment ${isUserComment ? 'user-comment' : ''}`}>
+                    <div className="comment-avatar" style={{ background: isUserComment ? '#1185fe' : colors[cColorIndex] }}>{cInitials}</div>
                     <div className="comment-body">
                       <div className="comment-meta">
                         <span className="comment-name">{comment.author?.name}</span>
@@ -264,7 +406,27 @@ AVOID generic responses like "Great post!" or "So true!" - every comment should 
                         <span className="comment-time">· {comment.timestamp}</span>
                       </div>
                       <div className="comment-content">{comment.content}</div>
-                      <div className="comment-actions"><span>💬 Reply</span><span>❤️ {comment.likes || 0}</span></div>
+                      <div className="comment-actions">
+                        <span onClick={() => setReplyingTo(replyingTo === i ? null : i)} style={{ color: replyingTo === i ? '#1185fe' : undefined }}>💬 Reply</span>
+                        <span>❤️ {comment.likes || 0}</span>
+                      </div>
+                      {replyingTo === i && (
+                        <div className="reply-input-section">
+                          <input 
+                            type="text" 
+                            className="reply-input" 
+                            placeholder="Write a reply..." 
+                            value={replyText} 
+                            onChange={e => setReplyText(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && handleReply(i, comment.content)}
+                            disabled={isReplying}
+                            autoFocus
+                          />
+                          <button className="reply-btn" onClick={() => handleReply(i, comment.content)} disabled={!replyText.trim() || isReplying}>
+                            {isReplying ? '...' : 'Reply'}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -333,6 +495,7 @@ AVOID generic responses like "Great post!" or "So true!" - every comment should 
         .post-dot { color: #666; }
         .post-time { font-size: 14px; color: #666; }
         .post-content { font-size: 15px; line-height: 1.5; color: #111; margin-bottom: 12px; white-space: pre-wrap; }
+        .post-image { width: 100%; max-height: 300px; object-fit: cover; border-radius: 12px; margin-bottom: 12px; background: #f0f0f5; }
         .post-actions { display: flex; gap: 2px; margin-left: -8px; }
         .action { display: flex; align-items: center; gap: 6px; padding: 6px 10px; background: none; border: none; border-radius: 20px; color: #666; font-size: 13px; cursor: pointer; }
         .action:hover { background: #f0f0f5; }
@@ -356,6 +519,13 @@ AVOID generic responses like "Great post!" or "So true!" - every comment should 
         .comment-actions { display: flex; gap: 16px; margin-top: 6px; font-size: 12px; color: #666; }
         .comment-actions span { cursor: pointer; }
         .comment-actions span:hover { color: #1185fe; }
+        .comment.user-comment { background: #f0f7ff; padding: 8px; margin: -8px; margin-bottom: 4px; border-radius: 8px; border-left: 2px solid #1185fe; }
+        .reply-input-section { display: flex; gap: 8px; margin-top: 10px; }
+        .reply-input { flex: 1; padding: 8px 12px; border: 1px solid #ddd; border-radius: 16px; font-size: 13px; outline: none; }
+        .reply-input:focus { border-color: #1185fe; }
+        .reply-btn { padding: 8px 16px; background: #1185fe; color: white; border: none; border-radius: 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
+        .reply-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .reply-btn:hover:not(:disabled) { background: #0969da; }
         .skeleton-post { pointer-events: none; }
         .skeleton { background: linear-gradient(90deg, #eee 25%, #ddd 50%, #eee 75%); background-size: 200% 100%; animation: shimmer 1.2s infinite; border-radius: 4px; }
         @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
@@ -409,6 +579,14 @@ AVOID generic responses like "Great post!" or "So true!" - every comment should 
         .modal-btn.secondary { background: #f3f3f8; border: 1px solid #ddd; color: #333; }
         .modal-btn.primary { background: linear-gradient(135deg, #1185fe 0%, #6366f1 100%); border: none; color: white; }
         .modal-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .slider-container { margin: 16px 0; }
+        .slider-label { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 14px; color: #333; }
+        .slider-value { font-weight: 600; color: #1185fe; background: #e8f4ff; padding: 4px 10px; border-radius: 12px; }
+        .slider { width: 100%; height: 8px; border-radius: 4px; background: #e4e4e9; outline: none; -webkit-appearance: none; cursor: pointer; }
+        .slider::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: linear-gradient(135deg, #1185fe 0%, #6366f1 100%); cursor: pointer; box-shadow: 0 2px 6px rgba(17,133,254,0.3); }
+        .slider::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: linear-gradient(135deg, #1185fe 0%, #6366f1 100%); cursor: pointer; border: none; }
+        .slider-labels { display: flex; justify-content: space-between; font-size: 11px; color: #888; margin-top: 4px; }
+        .education-preview { margin-top: 16px; padding: 12px; background: #f8f8fa; border-radius: 8px; font-size: 13px; color: #555; line-height: 1.5; }
         @media (max-width: 1000px) { .sidebar-right { display: none; } }
         @media (max-width: 700px) { .sidebar-left { width: 60px; } .sidebar-left .nav-item span, .new-post-btn span, .logo-text, .creator-link span { display: none; } .new-post-btn { padding: 14px; border-radius: 50%; } .logo { justify-content: center; } .creator-link { justify-content: center; } }
       `}</style>
@@ -421,10 +599,10 @@ AVOID generic responses like "Great post!" or "So true!" - every comment should 
           </div>
           <nav className="nav">
             <NavItem active icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>} label="Home" />
-            <NavItem icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>} label="Explore" />
+            <NavItem icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>} label="Explore" onClick={exploreTopic} />
             <NavItem icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>} label="How to Use" onClick={() => setShowHowTo(true)} />
             <NavItem icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>} label="Saved" />
-            <NavItem icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>} label="Settings" />
+            <NavItem icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>} label="Settings" onClick={() => setShowSettings(true)} />
           </nav>
           <div className="sidebar-spacer"></div>
           <a href="https://sudsaraswat.com" target="_blank" rel="noopener noreferrer" className="creator-link">
@@ -455,7 +633,7 @@ AVOID generic responses like "Great post!" or "So true!" - every comment should 
           </div>
           {error && <div className="error">{error}</div>}
           <div className="posts" key={animationKey}>
-            {feed.map((post, i) => (<Post key={post.id || i} post={post} index={i} />))}
+            {feed.map((post, i) => (<Post key={post.id || i} post={post} index={i} onAddReplies={handleAddReplies} />))}
             {isLoading && [...Array(6)].map((_, i) => (<SkeletonPost key={`skeleton-${i}`} />))}
           </div>
           {feed.length > 0 && !isLoading && (
@@ -486,7 +664,7 @@ AVOID generic responses like "Great post!" or "So true!" - every comment should 
           </div>
           <div className="sidebar-section">
             <div className="sidebar-title">ℹ️ About</div>
-            <p style={{ fontSize: '13px', color: '#666', lineHeight: 1.6 }}>Intelligent Scroll uses AI to generate realistic social media discussions on any topic. Powered by Groq's ultra-fast Llama models.</p>
+            <p style={{ fontSize: '13px', color: '#666', lineHeight: 1.6 }}>Intelligent Scroll generates educational social media discussions on any topic. Learn fascinating facts, explore different perspectives, and join conversations with AI-powered replies. Built with Groq's ultra-fast Llama models.</p>
           </div>
           <div className="footer"><a href="#">Privacy</a><a href="#">Terms</a><a href="#">About</a></div>
         </aside>
@@ -497,10 +675,11 @@ AVOID generic responses like "Great post!" or "So true!" - every comment should 
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header"><span className="modal-title">📖 How to Use Intelligent Scroll</span><button className="modal-close" onClick={() => setShowHowTo(false)}>×</button></div>
             <div className="modal-body">
-              <div className="modal-section"><h3>🔍 Explore Any Topic</h3><p>Type any topic in the search bar and click "Generate" to create an AI-powered feed of realistic social media posts and discussions about that topic.</p></div>
-              <div className="modal-section"><h3>✍️ Create Your Own Post</h3><p>Click "New Post" in the sidebar to write your own post. AI will automatically generate thoughtful comments and replies, giving you instant feedback and different perspectives!</p></div>
-              <div className="modal-section"><h3>💬 Join the Discussion</h3><p>Posts with comments have a blue reply count. Click it to expand the thread and see different viewpoints, questions, and reactions.</p></div>
-              <div className="modal-section"><h3>⚡ Tips</h3><ul><li>Be specific with topics for better results (e.g., "quantum entanglement" vs "physics")</li><li>Try trending topics for popular discussions</li><li>Your posts appear at the top with a blue highlight</li><li>Click "Load More" for infinite scrolling</li></ul></div>
+              <div className="modal-section"><h3>🔍 Explore Any Topic</h3><p>Type any topic in the search bar and click "Generate" to create an AI-powered feed of posts and discussions. Or click <strong>Explore</strong> in the sidebar to discover random interesting topics!</p></div>
+              <div className="modal-section"><h3>✍️ Create Your Own Post</h3><p>Click "New Post" in the sidebar to write your own post. AI will generate thoughtful comments and replies. Your post appears naturally within the feed.</p></div>
+              <div className="modal-section"><h3>💬 Reply to Comments</h3><p>Click "Reply" on any comment to join the conversation! Type your response and AI will generate follow-up replies, creating a dynamic back-and-forth discussion.</p></div>
+              <div className="modal-section"><h3>⚙️ Customize Your Feed</h3><p>Click <strong>Settings</strong> to adjust how educational vs. casual you want the content. Slide from fun memes and hot takes (1) to deep educational content (10).</p></div>
+              <div className="modal-section"><h3>⚡ Tips</h3><ul><li>Be specific with topics for better results</li><li>Use Explore to discover random interesting topics</li><li>Adjust education level in Settings to match your mood</li><li>Your posts and replies appear with a blue highlight</li></ul></div>
             </div>
           </div>
         </div>
@@ -516,6 +695,44 @@ AVOID generic responses like "Great post!" or "So true!" - every comment should 
               <div className="modal-actions">
                 <button className="modal-btn secondary" onClick={() => setShowNewPost(false)} disabled={isPostingNew}>Cancel</button>
                 <button className="modal-btn primary" onClick={handleNewPost} disabled={!newPostContent.trim() || isPostingNew}>{isPostingNew ? 'Generating comments...' : 'Post & Generate Comments'}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showSettings && (
+        <div className="modal-overlay" onClick={() => setShowSettings(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header"><span className="modal-title">⚙️ Settings</span><button className="modal-close" onClick={() => setShowSettings(false)}>×</button></div>
+            <div className="modal-body">
+              <div className="modal-section">
+                <h3>📚 Content Style</h3>
+                <p>Adjust how educational vs. casual you want the posts to be.</p>
+                <div className="slider-container">
+                  <div className="slider-label">
+                    <span>Education Level</span>
+                    <span className="slider-value">{educationLevel}/10</span>
+                  </div>
+                  <input type="range" className="slider" min="1" max="10" value={educationLevel} onChange={e => setEducationLevel(parseInt(e.target.value))} />
+                  <div className="slider-labels">
+                    <span>Casual & Fun</span>
+                    <span>Highly Educational</span>
+                  </div>
+                </div>
+                <div className="education-preview">
+                  {educationLevel <= 3 && "🎉 Casual mode: Punchy takes, memes, relatable content with occasional facts sprinkled in."}
+                  {educationLevel > 3 && educationLevel <= 6 && "⚖️ Balanced mode: Mix of interesting facts, personal perspectives, and accessible explanations."}
+                  {educationLevel > 6 && "🎓 Educational mode: Deep dives, expert insights, specific facts and data. Learn something new!"}
+                </div>
+              </div>
+              <div className="modal-section">
+                <h3>💡 Tips</h3>
+                <ul>
+                  <li>Lower settings = more opinions, jokes, hot takes</li>
+                  <li>Higher settings = more facts, research, expert analysis</li>
+                  <li>Changes apply to new posts generated</li>
+                </ul>
               </div>
             </div>
           </div>
