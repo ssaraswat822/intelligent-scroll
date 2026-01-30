@@ -18,12 +18,19 @@ const App = () => {
   const inputRef = useRef(null);
   const currentTopicRef = useRef('');
 
-  // Reliable image API using picsum.photos with topic-based seeding
-  const fetchUnsplashImage = (query, index = 0) => {
-    // Use a hash of the query to get consistent but varied images
-    const seed = query.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) + index;
+  // Topic-relevant images using Unsplash source (free, no API key needed)
+  const fetchTopicImage = (query, index = 0) => {
+    // Clean and encode the search terms for better image matching
+    const searchTerms = query
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '')
+      .split(' ')
+      .filter(word => word.length > 2)
+      .slice(0, 3)
+      .join(',');
+    
     return {
-      url: `https://picsum.photos/seed/${seed}/800/450`,
+      url: `https://source.unsplash.com/800x450/?${encodeURIComponent(searchTerms)}&${index}`,
       alt: `Image related to ${query}`
     };
   };
@@ -198,7 +205,7 @@ Make the responses:
       // Add images to 2 posts (positions 1 and 4) for variety
       const postsWithImages = posts.map((post, i) => {
         if (i === 1 || i === 4) {
-          return { ...post, image: fetchUnsplashImage(searchTopic, i) };
+          return { ...post, image: fetchTopicImage(searchTopic, i) };
         }
         return post;
       });
@@ -590,8 +597,99 @@ Make the responses:
         .slider::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: linear-gradient(135deg, #1185fe 0%, #6366f1 100%); cursor: pointer; border: none; }
         .slider-labels { display: flex; justify-content: space-between; font-size: 11px; color: #888; margin-top: 4px; }
         .education-preview { margin-top: 16px; padding: 12px; background: #f8f8fa; border-radius: 8px; font-size: 13px; color: #555; line-height: 1.5; }
-        @media (max-width: 1000px) { .sidebar-right { display: none; } }
-        @media (max-width: 700px) { .sidebar-left { width: 60px; } .sidebar-left .nav-item span, .new-post-btn span, .logo-text, .creator-link span { display: none; } .new-post-btn { padding: 14px; border-radius: 50%; } .logo { justify-content: center; } .creator-link { justify-content: center; } }
+        
+        /* Tablet */
+        @media (max-width: 1000px) { 
+          .sidebar-right { display: none; } 
+          .main-feed { max-width: 100%; }
+        }
+        
+        /* Mobile */
+        @media (max-width: 768px) { 
+          .layout { flex-direction: column; }
+          .sidebar-left { 
+            width: 100%; 
+            height: auto; 
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            top: auto;
+            flex-direction: row;
+            background: white;
+            border-top: 1px solid #e4e4e9;
+            padding: 8px 16px;
+            z-index: 100;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+          }
+          .sidebar-left .logo { display: none; }
+          .sidebar-left .nav { flex-direction: row; justify-content: space-around; width: 100%; gap: 0; }
+          .sidebar-left .nav-item { padding: 10px 12px; flex-direction: column; gap: 4px; font-size: 11px; }
+          .sidebar-left .nav-item svg { width: 24px; height: 24px; }
+          .sidebar-left .nav-item span { display: block; }
+          .sidebar-left .sidebar-spacer { display: none; }
+          .sidebar-left .creator-link { display: none; }
+          .sidebar-left .new-post-btn { 
+            position: fixed;
+            bottom: 80px;
+            right: 16px;
+            width: 56px;
+            height: 56px;
+            padding: 0;
+            border-radius: 50%;
+            box-shadow: 0 4px 12px rgba(17,133,254,0.4);
+          }
+          .sidebar-left .new-post-btn span { display: none; }
+          .main-feed { 
+            border: none; 
+            padding-bottom: 80px;
+            min-height: calc(100vh - 60px);
+          }
+          .feed-header { position: sticky; top: 0; }
+          .feed-logo { padding: 12px; font-size: 16px; }
+          .feed-tabs { }
+          .feed-tab { padding: 12px 8px; font-size: 13px; }
+          .topic-input-section { padding: 10px 12px; flex-wrap: wrap; }
+          .topic-avatar { width: 36px; height: 36px; font-size: 16px; }
+          .topic-input-wrapper { flex: 1; min-width: 200px; }
+          .topic-input { padding: 10px 12px; font-size: 16px; }
+          .generate-btn { padding: 10px 14px; font-size: 14px; min-width: 80px; }
+          .random-btn { padding: 10px 12px; }
+          .post { padding: 12px; }
+          .post-avatar { width: 40px; height: 40px; font-size: 14px; }
+          .post-content { font-size: 15px; }
+          .post-image { border-radius: 8px; max-height: 250px; }
+          .post-actions { gap: 0; }
+          .action { padding: 8px; font-size: 13px; }
+          .action svg { width: 20px; height: 20px; }
+          .comments-section { margin-top: 10px; padding-top: 10px; }
+          .comment { gap: 8px; }
+          .comment-avatar { width: 28px; height: 28px; font-size: 11px; }
+          .comment-content { font-size: 14px; }
+          .reply-input-section { flex-direction: column; gap: 8px; }
+          .reply-input { font-size: 16px; }
+          .reply-btn { align-self: flex-end; }
+          .empty-state { padding: 32px 16px; }
+          .empty-icon { font-size: 40px; }
+          .empty-title { font-size: 16px; }
+          .chip { padding: 10px 14px; font-size: 14px; }
+          .load-more-section { padding: 16px; }
+          .modal { width: 95%; margin: 10px; border-radius: 12px; }
+          .modal-header { padding: 14px 16px; }
+          .modal-title { font-size: 16px; }
+          .modal-body { padding: 16px; }
+          .new-post-textarea { font-size: 16px; min-height: 100px; }
+          .modal-actions { flex-direction: column; }
+          .modal-btn { width: 100%; text-align: center; }
+        }
+        
+        /* Small mobile */
+        @media (max-width: 400px) {
+          .topic-input-wrapper { flex-wrap: wrap; }
+          .topic-input { width: 100%; }
+          .generate-btn { flex: 1; }
+          .random-btn { flex: 0; }
+        }
       `}</style>
 
       <div className="layout">
