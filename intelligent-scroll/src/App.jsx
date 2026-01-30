@@ -229,8 +229,8 @@ Make replies diverse:
     </div>
   );
 
-  // Post Component
-  const Post = ({ post, index }) => {
+  // Memoized Post Component to prevent re-renders
+  const Post = React.memo(({ post, index }) => {
     const [liked, setLiked] = useState(false);
     const [reposted, setReposted] = useState(false);
     const [saved, setSaved] = useState(false);
@@ -561,6 +561,7 @@ Make replies diverse:
           gap: 12px;
           padding: 14px 16px;
           border-bottom: 1px solid #e4e4e9;
+          will-change: transform, opacity;
         }
 
         .post:hover { background: #fafafa; }
@@ -571,11 +572,12 @@ Make replies diverse:
         }
 
         .post-animate {
-          animation: fadeIn 0.35s ease both;
+          animation: fadeIn 0.4s ease forwards;
+          opacity: 0;
         }
 
         @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(10px); }
+          from { opacity: 0; transform: translateY(12px); }
           to { opacity: 1; transform: translateY(0); }
         }
 
