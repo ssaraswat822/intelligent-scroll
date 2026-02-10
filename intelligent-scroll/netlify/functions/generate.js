@@ -84,6 +84,9 @@ export async function handler(event) {
       text = await callGroq(prompt, maxTokens);
     }
 
+    // Strip any <think>...</think> tags that Qwen3 may emit
+    text = text.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+
     return {
       statusCode: 200,
       headers,
