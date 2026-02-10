@@ -15,7 +15,7 @@
   --shadow: rgba(44, 36, 23, 0.08);
   --green: #5A8F5C;
   --blue: #3D6B99;
-  --radius: 12px;
+  --radius: 8px;
 }
 
 body {
@@ -40,38 +40,37 @@ body {
   top: 0;
   z-index: 100;
   background: var(--bg-card);
-  border-bottom: 2px solid var(--border);
-  padding: 12px 24px;
+  border-bottom: 1px solid var(--border);
+  padding: 10px 20px;
   display: flex;
   align-items: center;
-  gap: 16px;
-  box-shadow: 0 2px 12px var(--shadow);
-  overflow: hidden;
+  gap: 14px;
+  box-shadow: 0 1px 8px var(--shadow);
 }
 
 .logo {
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--accent);
   white-space: nowrap;
-  letter-spacing: -0.5px;
+  letter-spacing: -0.3px;
   cursor: default;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
 }
 
 .logo-icon {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   background: var(--accent);
-  border-radius: 8px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  font-size: 18px;
+  font-size: 15px;
   font-family: Georgia, 'Times New Roman', serif;
 }
 
@@ -84,11 +83,11 @@ body {
 
 .search-input {
   flex: 1;
-  padding: 10px 16px;
-  border: 2px solid var(--border);
+  padding: 8px 14px;
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  font-size: 15px;
+  font-size: 14px;
   background: var(--bg);
   color: var(--text);
   outline: none;
@@ -99,11 +98,11 @@ body {
 .search-input::placeholder { color: var(--text-secondary); }
 
 .btn {
-  padding: 10px 18px;
+  padding: 8px 16px;
   border: none;
   border-radius: var(--radius);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
@@ -114,10 +113,10 @@ body {
 .btn.primary:hover { background: var(--accent-hover); }
 .btn.primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.btn.secondary { background: var(--bg); color: var(--text); border: 2px solid var(--border); }
+.btn.secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
 .btn.secondary:hover { border-color: var(--accent); color: var(--accent); }
 
-.btn.ghost { background: transparent; color: var(--text-secondary); padding: 8px 12px; }
+.btn.ghost { background: transparent; color: var(--text-secondary); padding: 6px 10px; }
 .btn.ghost:hover { color: var(--accent); background: var(--accent-light); }
 .btn.ghost.active { color: var(--accent); background: var(--accent-light); }
 
@@ -135,12 +134,12 @@ body {
 
 /* ─── Sidebar ─────────────────────────── */
 .sidebar {
-  width: 260px;
+  width: 240px;
   flex-shrink: 0;
-  padding: 16px 20px 20px 0;
+  padding: 12px 16px 20px 0;
   position: sticky;
-  top: 68px;
-  height: calc(100vh - 68px);
+  top: 52px;
+  height: calc(100vh - 52px);
   overflow-y: auto;
 }
 
@@ -214,18 +213,18 @@ body {
 
 .feed-topic {
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 700;
   color: var(--text);
 }
 
-.feed-topic-sub { font-size: 14px; color: var(--text-secondary); margin-top: 2px; }
+.feed-topic-sub { font-size: 13px; color: var(--text-secondary); margin-top: 1px; }
 .feed-actions { display: flex; gap: 6px; }
 
 /* ─── Wiki Card ───────────────────────── */
 .wiki-card {
   background: var(--bg-card);
-  border: 2px solid var(--border);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 14px;
   margin-bottom: 12px;
@@ -234,9 +233,9 @@ body {
 }
 
 .wiki-thumb {
-  width: 80px;
-  height: 80px;
-  border-radius: 8px;
+  width: 64px;
+  height: 64px;
+  border-radius: 6px;
   object-fit: cover;
   flex-shrink: 0;
   border: 1px solid var(--border);
@@ -267,10 +266,10 @@ body {
 /* ─── Post Card ───────────────────────── */
 .post-card {
   background: var(--bg-card);
-  border: 2px solid var(--border);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 16px;
-  margin-bottom: 10px;
+  padding: 14px 16px;
+  margin-bottom: 8px;
   animation: slideUp 0.4s ease-out both;
   transition: box-shadow 0.2s;
 }
@@ -285,17 +284,17 @@ body {
 .post-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
 
 .post-avatar {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: 16px;
   flex-shrink: 0;
 }
 
-.post-avatar.large { width: 52px; height: 52px; font-size: 24px; }
+.post-avatar.large { width: 44px; height: 44px; font-size: 20px; }
 
 .post-user-info { flex: 1; min-width: 0; }
 .post-name { font-weight: 600; font-size: 14px; display: block; }
@@ -304,9 +303,9 @@ body {
 
 .post-content {
   font-family: Georgia, 'Times New Roman', serif;
-  font-size: 15.5px;
-  line-height: 1.65;
-  margin-bottom: 12px;
+  font-size: 15px;
+  line-height: 1.6;
+  margin-bottom: 10px;
   color: var(--text);
   white-space: pre-wrap;
 }
@@ -314,15 +313,15 @@ body {
 .deep-dive-btn {
   display: inline-block;
   background: none;
-  border: 1.5px solid var(--blue);
+  border: 1px solid var(--blue);
   color: var(--blue);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
-  padding: 5px 12px;
-  border-radius: 20px;
+  padding: 4px 10px;
+  border-radius: 16px;
   cursor: pointer;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
   transition: all 0.15s;
 }
 
@@ -333,13 +332,13 @@ body {
 .reaction-btn {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 5px 10px;
-  border: 1.5px solid var(--border);
-  border-radius: 20px;
+  gap: 3px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
   background: none;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 12px;
   transition: all 0.15s;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
@@ -348,8 +347,8 @@ body {
 .reaction-btn.active { border-color: var(--accent); background: var(--accent-light); }
 .reaction-btn.has-comments { border-color: var(--blue); color: var(--blue); }
 
-.reaction-emoji { font-size: 14px; }
-.reaction-count { font-size: 12px; color: var(--text-secondary); font-weight: 500; }
+.reaction-emoji { font-size: 13px; }
+.reaction-count { font-size: 11px; color: var(--text-secondary); font-weight: 500; }
 .reaction-btn.active .reaction-count { color: var(--accent); }
 
 .inline-reply-btn {
@@ -371,14 +370,14 @@ body {
   gap: 6px;
   width: 100%;
   text-align: left;
-  margin-top: 12px;
-  padding: 10px 12px;
+  margin-top: 10px;
+  padding: 8px 10px;
   background: linear-gradient(135deg, #FFF8ED, #FFF3E0);
-  border: 1.5px dashed var(--accent);
-  border-radius: 8px;
+  border: 1px dashed var(--accent);
+  border-radius: 6px;
   cursor: pointer;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  font-size: 13px;
+  font-size: 12px;
   color: var(--accent);
   transition: all 0.15s;
   line-height: 1.4;
@@ -419,7 +418,7 @@ body {
 .comment-input {
   flex: 1;
   padding: 8px 12px;
-  border: 1.5px solid var(--border);
+  border: 1px solid var(--border);
   border-radius: 20px;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-size: 13px;
@@ -464,29 +463,29 @@ body {
 
 .modal-content {
   background: var(--bg-card);
-  border-radius: 16px;
-  padding: 28px;
-  max-width: 580px;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 540px;
   width: 100%;
   max-height: 80vh;
   overflow-y: auto;
   position: relative;
   animation: scaleIn 0.25s ease-out;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.15);
 }
 
 @keyframes scaleIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
 .modal-close {
   position: absolute;
-  top: 16px;
-  right: 16px;
-  width: 32px;
-  height: 32px;
+  top: 14px;
+  right: 14px;
+  width: 28px;
+  height: 28px;
   border: none;
   background: var(--bg);
   border-radius: 50%;
-  font-size: 16px;
+  font-size: 14px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -498,14 +497,14 @@ body {
 .modal-close:hover { background: var(--accent-light); color: var(--accent); }
 .modal-close.small { width: 26px; height: 26px; font-size: 13px; position: static; }
 
-.modal-content h2 { font-family: Georgia, 'Times New Roman', serif; font-size: 22px; margin-bottom: 12px; }
-.modal-sub { font-size: 14px; color: var(--text-secondary); margin-bottom: 16px; }
+.modal-content h2 { font-family: Georgia, 'Times New Roman', serif; font-size: 20px; margin-bottom: 10px; }
+.modal-sub { font-size: 13px; color: var(--text-secondary); margin-bottom: 14px; }
 
 .new-post-textarea {
   width: 100%;
   min-height: 120px;
   padding: 14px;
-  border: 2px solid var(--border);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   font-family: Georgia, 'Times New Roman', serif;
   font-size: 15px;
@@ -564,7 +563,7 @@ kbd {
 /* ─── Settings Panel ──────────────────── */
 .settings-panel {
   background: var(--bg-card);
-  border: 2px solid var(--border);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 14px;
   margin-bottom: 12px;
@@ -602,7 +601,7 @@ kbd {
 
 .persona-chip {
   padding: 6px 12px;
-  border: 1.5px solid var(--border);
+  border: 1px solid var(--border);
   border-radius: 20px;
   background: none;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -617,17 +616,17 @@ kbd {
 .regenerate-btn {
   width: 100%;
   margin-top: 4px;
-  padding: 11px 18px;
-  font-size: 14px;
+  padding: 9px 16px;
+  font-size: 13px;
 }
 
 /* ─── Skeleton ────────────────────────── */
 .skeleton-post {
   background: var(--bg-card);
-  border: 2px solid var(--border);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 18px;
-  margin-bottom: 12px;
+  padding: 14px 16px;
+  margin-bottom: 8px;
   animation: pulse 1.5s ease-in-out infinite;
 }
 
@@ -654,7 +653,7 @@ kbd {
 
 .error-msg {
   background: #FFF0F0;
-  border: 1.5px solid #E57373;
+  border: 1px solid #E57373;
   border-radius: var(--radius);
   padding: 14px;
   color: #C62828;
@@ -689,7 +688,7 @@ kbd {
 .preload-spinner {
   width: 18px;
   height: 18px;
-  border: 2px solid var(--border);
+  border: 1px solid var(--border);
   border-top-color: var(--accent);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
@@ -727,7 +726,7 @@ kbd {
 .mobile-nav-btn {
   flex-shrink: 0;
   padding: 7px 14px;
-  border: 1.5px solid var(--border);
+  border: 1px solid var(--border);
   border-radius: 20px;
   background: var(--bg-card);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -749,7 +748,7 @@ kbd {
 .mobile-dropdown {
   margin-top: 8px;
   background: var(--bg-card);
-  border: 2px solid var(--border);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 6px;
   max-height: 220px;
@@ -794,7 +793,7 @@ kbd {
   .mobile-nav {
     display: block;
     position: sticky;
-    top: 56px;
+    top: 48px;
     z-index: 90;
     background: var(--bg);
     padding: 10px 8px;
