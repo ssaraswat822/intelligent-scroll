@@ -121,20 +121,33 @@ ${wikiData ? `Background info: ${wikiData.extract}` : ""}
 Education level: ${eduLevel}/10 (${eduDesc})
 Active personas: ${personaList}
 
-Generate EXACTLY ${count} posts as a JSON array. Each post must have:
+Generate EXACTLY ${count} posts as a JSON array. VARY THE LENGTH dramatically:
+- 1-2 SHORT posts (1-2 punchy sentences, hot takes or reactions, 40-100 chars)
+- 2-3 MEDIUM posts (2-4 sentences with a specific fact or insight, 150-300 chars)
+- 1-2 LONG posts (a mini-essay or thread-style post, 300-500 chars, with multiple points or a story)
+
+Each post must have:
 - "persona": one of [${activePersonas.map(p => `"${p}"`).join(",")}]
-- "content": the post text (80-200 chars for casual, 100-280 for educational). NO hashtags.
+- "content": the post text. NO hashtags. Use line breaks (\\n) in longer posts for readability.
 - "hasThread": boolean, true for 3-4 posts that should have comment threads
-- "comments": if hasThread is true, array of 1-3 comment objects with {"persona", "content"} (60-150 chars each)
-- "deepDive": a longer 2-3 paragraph educational expansion of this post's topic (for "read more")
+- "comments": if hasThread is true, array of 2-4 comment objects with {"persona", "content"} (40-200 chars each, also varied in length)
+- "deepDive": a detailed 3-4 paragraph educational expansion (500-800 chars) with specific facts, dates, names, and surprising details
 - "followUp": a compelling question related to this post that could spark a new feed
 
-Make posts feel like real social media: varied lengths, some with hot takes, some with facts, some with questions. Mix serious and playful tones based on edu level. Comments should have genuine debate/agreement/questions.
+Post style variety — include a MIX of these:
+- A bold opinion or hot take
+- A specific surprising fact with a number or date
+- A question that invites debate
+- A mini-explainer that breaks down a concept
+- A personal-style anecdote or "TIL" post
+- A longer analytical or storytelling post
+
+Comments should feel real: some agree, some push back, some ask follow-ups, some crack jokes. Vary comment lengths too.
 
 Return ONLY valid JSON array, no markdown fences.`;
 
   try {
-    const text = await callAI(prompt, 4000);
+    const text = await callAI(prompt, 6000);
     if (!text) return null;
     const clean = text.replace(/```json|```/g, "").trim();
     return JSON.parse(clean);
@@ -419,7 +432,7 @@ const HowToModal = ({ onClose }) => (
 );
 
 // ─── Settings Panel ─────────────────────────────────────────────────
-const SettingsPanel = ({ eduLevel, setEduLevel, activePersonas, setActivePersonas, onClose }) => {
+const SettingsPanel = ({ eduLevel, setEduLevel, activePersonas, setActivePersonas, onClose, onRegenerate, isLoading }) => {
   const togglePersona = (key) => {
     setActivePersonas(prev =>
       prev.includes(key) ? (prev.length > 1 ? prev.filter(p => p !== key) : prev) : [...prev, key]
@@ -459,6 +472,11 @@ const SettingsPanel = ({ eduLevel, setEduLevel, activePersonas, setActivePersona
           ))}
         </div>
       </div>
+      {onRegenerate && (
+        <button className="btn primary regenerate-btn" onClick={onRegenerate} disabled={isLoading}>
+          {isLoading ? "⏳ Regenerating..." : "🔄 Regenerate Feed"}
+        </button>
+      )}
     </div>
   );
 };
@@ -800,6 +818,12 @@ export default function App() {
               activePersonas={activePersonas}
               setActivePersonas={setActivePersonas}
               onClose={() => setSidebarTab(null)}
+              onRegenerate={activeTopic ? () => {
+                const key = activeTopic.toLowerCase().trim();
+                setFeedCache(prev => { const n = {...prev}; delete n[key]; return n; });
+                generateFeed(activeTopic);
+              } : null}
+              isLoading={isLoading}
             />
           )}
 
