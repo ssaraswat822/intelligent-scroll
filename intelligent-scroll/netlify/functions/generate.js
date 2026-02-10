@@ -18,10 +18,12 @@ async function callGroq(prompt, maxTokens) {
       Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
     },
     body: JSON.stringify({
-      model: "qwen-3-32b",
+      model: "qwen/qwen3-32b",
       messages: [{ role: "user", content: prompt }],
       max_tokens: maxTokens,
-      temperature: 0.8,
+      temperature: 0.7,
+      top_p: 0.8,
+      reasoning_effort: "none",
     }),
   });
   const data = await res.json();
