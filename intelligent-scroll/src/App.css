@@ -1,7 +1,7 @@
 /* ─── Intelligent Scroll — Styles ─────────────────────────────────── */
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
-html { height: 100%; overflow: hidden; }
+html, #root { height: 100%; overflow: hidden; }
 
 :root {
   --bg: #F5F0E8;
