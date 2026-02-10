@@ -38,9 +38,17 @@ const EXPLORE_TOPICS = [
 ];
 
 const EDU_LABELS = {
-  low: { label: "Casual & Fun", desc: "Hot takes, memes, punchy reactions" },
-  mid: { label: "Balanced", desc: "Mix of facts and personal perspectives" },
-  high: { label: "Highly Educational", desc: "Deep dives, expert insights, data" },
+  low: { label: "Casual & Fun", desc: "Memes, reactions, hot takes" },
+  mid: { label: "Balanced", desc: "Facts mixed with opinions" },
+  high: { label: "Highly Educational", desc: "Expert-level analysis" },
+};
+
+const getEduPrompt = (level) => {
+  if (level <= 2) return `TONE: Extremely casual. Think TikTok comments and tweets. Use slang, abbreviations, ALL CAPS for emphasis, exaggerated reactions ("bruh", "no way", "this is wild"). Posts should feel like friends texting about the topic. Keep most posts under 2 sentences. Fun > accuracy.`;
+  if (level <= 4) return `TONE: Casual but informative. Think popular Reddit posts or Twitter threads. Mix fun observations with actual facts. Use conversational language, some humor, occasional "wait, actually..." moments. Reference pop culture comparisons. Include 1-2 specific facts per post but keep it approachable.`;
+  if (level <= 6) return `TONE: Balanced and engaging. Think quality YouTube explainer or a good Atlantic article. Each post should teach something specific — include real numbers, dates, named researchers, or studies. Mix explanatory posts with opinion/debate posts. Use clear analogies. Accessible but substantive.`;
+  if (level <= 8) return `TONE: Highly educational and analytical. Think university lecture or Nature article summary. Include specific data points, cite named studies/researchers/papers by name, use proper technical terminology (but explain it), discuss mechanisms and causation not just facts. Posts should demonstrate deep understanding. Reference ongoing scientific debates and open questions.`;
+  return `TONE: Expert/PhD level. Think peer review discussion or advanced seminar. Use precise technical terminology, reference specific papers and methodologies, discuss edge cases and limitations of current understanding, engage with nuance and complexity. Include quantitative data. Assume the reader has foundational knowledge. Discuss what we DON'T know as much as what we do.`;
 };
 
 const generateId = () => Math.random().toString(36).slice(2, 10);
@@ -112,37 +120,36 @@ const callAI = async (prompt, maxTokens = 4000) => {
 };
 
 const generateFeedContent = async (topic, wikiData, eduLevel, activePersonas, count = 6) => {
-  const eduDesc = eduLevel <= 3 ? EDU_LABELS.low.desc : eduLevel <= 6 ? EDU_LABELS.mid.desc : EDU_LABELS.high.desc;
+  const eduPrompt = getEduPrompt(eduLevel);
   const personaList = activePersonas.map(p => `${PERSONAS[p].label} (${PERSONAS[p].style})`).join(", ");
 
   const prompt = `Generate a social media feed about "${topic}". 
 ${wikiData ? `Background info: ${wikiData.extract}` : ""}
 
-Education level: ${eduLevel}/10 (${eduDesc})
+${eduPrompt}
+
 Active personas: ${personaList}
 
 Generate EXACTLY ${count} posts as a JSON array. VARY THE LENGTH dramatically:
-- 1-2 SHORT posts (1-2 punchy sentences, hot takes or reactions, 40-100 chars)
-- 2-3 MEDIUM posts (2-4 sentences with a specific fact or insight, 150-300 chars)
-- 1-2 LONG posts (a mini-essay or thread-style post, 300-500 chars, with multiple points or a story)
+- 1-2 SHORT posts (1-2 punchy sentences, 40-120 chars)
+- 2-3 MEDIUM posts (2-4 sentences with specific facts or insights, 150-350 chars)
+- 1-2 LONG posts (mini-essay or thread-style, 350-600 chars, with multiple points. Use \\n for line breaks)
 
 Each post must have:
 - "persona": one of [${activePersonas.map(p => `"${p}"`).join(",")}]
-- "content": the post text. NO hashtags. Use line breaks (\\n) in longer posts for readability.
-- "hasThread": boolean, true for 3-4 posts that should have comment threads
-- "comments": if hasThread is true, array of 2-4 comment objects with {"persona", "content"} (40-200 chars each, also varied in length)
-- "deepDive": a detailed 3-4 paragraph educational expansion (500-800 chars) with specific facts, dates, names, and surprising details
-- "followUp": a compelling question related to this post that could spark a new feed
+- "content": the post text. NO hashtags. Use \\n for line breaks in longer posts.
+- "hasThread": boolean, true for 3-4 posts
+- "comments": if hasThread is true, array of 2-4 comment objects with {"persona", "content"} (varied lengths 40-250 chars)
+- "deepDive": a detailed 3-4 paragraph expansion (600-1000 chars) with specific facts, dates, names, and surprising details
+- "followUp": a compelling follow-up question that could spark a new feed
 
-Post style variety — include a MIX of these:
+Post variety — include a MIX of:
 - A bold opinion or hot take
-- A specific surprising fact with a number or date
+- A specific surprising fact with a number/date/name
 - A question that invites debate
-- A mini-explainer that breaks down a concept
-- A personal-style anecdote or "TIL" post
-- A longer analytical or storytelling post
-
-Comments should feel real: some agree, some push back, some ask follow-ups, some crack jokes. Vary comment lengths too.
+- A mini-explainer breaking down a concept
+- A "TIL" or story-style post
+- A longer analytical post
 
 Return ONLY valid JSON array, no markdown fences.`;
 
@@ -505,10 +512,14 @@ export default function App() {
   const [history, setHistory] = useState([]);
   const [feedCache, setFeedCache] = useState({});
 
-  // Progressive loading
+  // Progressive loading & infinite scroll
   const [visibleCount, setVisibleCount] = useState(0);
+  const [preloadedPosts, setPreloadedPosts] = useState([]);
+  const [isPreloading, setIsPreloading] = useState(false);
   const feedRef = useRef(null);
   const inputRef = useRef(null);
+  const bottomRef = useRef(null);
+  const preloadRef = useRef({ topic: "", wiki: null }); // track current context for preloading
 
   // Load history from localStorage on mount
   useEffect(() => {
@@ -542,6 +553,65 @@ export default function App() {
       return () => clearTimeout(timer);
     }
   }, [feed, visibleCount]);
+
+  // Preload next batch of posts in background
+  const preloadNextBatch = useCallback(async () => {
+    const { topic: pTopic, wiki: pWiki } = preloadRef.current;
+    if (!pTopic || isPreloading) return;
+    setIsPreloading(true);
+    try {
+      const posts = await generateFeedContent(pTopic, pWiki, eduLevel, activePersonas);
+      if (posts?.length) {
+        const formatted = posts.map((p, i) => ({
+          id: generateId(),
+          user: generateUser(p.persona || randomChoice(activePersonas)),
+          content: p.content,
+          time: timeAgo(i + 6),
+          comments: (p.comments || []).map(c => ({
+            id: generateId(),
+            user: generateUser(c.persona || randomChoice(activePersonas)),
+            content: c.content,
+          })),
+          deepDive: p.deepDive || null,
+          followUp: p.followUp || null,
+          hasThread: p.hasThread || false,
+        }));
+        setPreloadedPosts(prev => [...prev, ...formatted]);
+      }
+    } catch (e) {
+      console.error("Preload error:", e);
+    }
+    setIsPreloading(false);
+  }, [eduLevel, activePersonas, isPreloading]);
+
+  // Start preloading once initial feed loads
+  useEffect(() => {
+    if (feed.length > 0 && preloadedPosts.length === 0 && !isPreloading && activeTopic) {
+      preloadNextBatch();
+    }
+  }, [feed.length, activeTopic]);
+
+  // Infinite scroll — observe bottom sentinel
+  useEffect(() => {
+    const el = bottomRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !isLoading && activeTopic) {
+          // Append preloaded posts if available
+          if (preloadedPosts.length > 0) {
+            setFeed(prev => [...prev, ...preloadedPosts]);
+            setPreloadedPosts([]);
+            // Start preloading next batch
+            setTimeout(() => preloadNextBatch(), 200);
+          }
+        }
+      },
+      { rootMargin: "400px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [preloadedPosts, isLoading, activeTopic]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -584,6 +654,8 @@ export default function App() {
       setWikiData(feedCache[key].wiki);
       setActiveTopic(searchTopic);
       setVisibleCount(0);
+      setPreloadedPosts([]);
+      preloadRef.current = { topic: searchTopic, wiki: feedCache[key].wiki };
       return;
     }
 
@@ -592,9 +664,11 @@ export default function App() {
     setFeed([]);
     setVisibleCount(0);
     setActiveTopic(searchTopic);
+    setPreloadedPosts([]);
 
     const wiki = await fetchWikipedia(searchTopic);
     setWikiData(wiki);
+    preloadRef.current = { topic: searchTopic, wiki };
 
     const posts = await generateFeedContent(searchTopic, wiki, eduLevel, activePersonas);
     if (!posts) {
@@ -831,7 +905,7 @@ export default function App() {
             <div className="feed-header">
               <div>
                 <div className="feed-topic">{activeTopic}</div>
-                <div className="feed-topic-sub">{feed.length} posts generated</div>
+                <div className="feed-topic-sub">{feed.length} posts • scroll for more</div>
               </div>
               <div className="feed-actions">
                 <button className="btn ghost" onClick={() => setSidebarTab(sidebarTab === "settings" ? null : "settings")}>
@@ -878,6 +952,23 @@ export default function App() {
               animDelay={0}
             />
           ))}
+
+          {/* Infinite scroll sentinel & preload indicator */}
+          {!isLoading && feed.length > 0 && (
+            <div ref={bottomRef} className="scroll-sentinel">
+              {isPreloading && (
+                <div className="preload-indicator">
+                  <div className="preload-spinner" />
+                  <span>Loading more posts...</span>
+                </div>
+              )}
+              {preloadedPosts.length > 0 && !isPreloading && (
+                <div className="preload-indicator ready">
+                  <span>Scroll for more</span>
+                </div>
+              )}
+            </div>
+          )}
 
           {!isLoading && !activeTopic && feed.length === 0 && (
             <div className="empty-state">
