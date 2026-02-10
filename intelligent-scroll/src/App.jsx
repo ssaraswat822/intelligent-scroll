@@ -151,6 +151,11 @@ Post variety — include a MIX of:
 - A "TIL" or story-style post
 - A longer analytical post
 
+CRITICAL RULES:
+- NEVER repeat the same fact or statistic across multiple posts. Each post must cover a DIFFERENT aspect of the topic.
+- If you're unsure about a specific number, date, or claim, say "roughly" or "around" — do NOT invent precise statistics.
+- Each post should feel like it's from a different person with a unique angle. No two posts should make the same point.
+
 Return ONLY valid JSON array, no markdown fences.`;
 
   try {
