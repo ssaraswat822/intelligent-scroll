@@ -1,144 +1,98 @@
-// Netlify serverless function to proxy Groq API calls and fetch images
-// This keeps your API keys secure on the server
+// Netlify serverless function — proxies AI requests so the API key stays secret.
+// Supports Groq (default, fastest) or Anthropic Claude.
+//
+// Environment variables (set in Netlify dashboard → Site settings → Environment variables):
+//   GROQ_API_KEY   — your Groq API key (https://console.groq.com)
+//   --- OR ---
+//   ANTHROPIC_API_KEY — your Anthropic API key (if you prefer Claude)
+//   AI_PROVIDER       — "groq" (default) or "anthropic"
+
+const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
+const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
+
+async function callGroq(prompt, maxTokens) {
+  const res = await fetch(GROQ_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: "llama-3.3-70b-versatile",
+      messages: [{ role: "user", content: prompt }],
+      max_tokens: maxTokens,
+      temperature: 0.9,
+    }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error?.message || "Groq API error");
+  return data.choices?.[0]?.message?.content || "";
+}
+
+async function callAnthropic(prompt, maxTokens) {
+  const res = await fetch(ANTHROPIC_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": process.env.ANTHROPIC_API_KEY,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: maxTokens,
+      messages: [{ role: "user", content: prompt }],
+    }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error?.message || "Anthropic API error");
+  return data.content?.map((b) => b.text || "").join("") || "";
+}
 
 export async function handler(event) {
-  // Handle CORS preflight
-  if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      },
-      body: '',
-    };
+  // CORS headers
+  const headers = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Content-Type": "application/json",
+  };
+
+  if (event.httpMethod === "OPTIONS") {
+    return { statusCode: 204, headers, body: "" };
   }
 
-  // Only allow POST
-  if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, body: 'Method Not Allowed' };
+  if (event.httpMethod !== "POST") {
+    return { statusCode: 405, headers, body: JSON.stringify({ error: "Method not allowed" }) };
   }
 
   try {
-    const { prompt, type, query } = JSON.parse(event.body);
-    
-    // Handle image search requests
-    if (type === 'image') {
-      const PEXELS_API_KEY = process.env.PEXELS_API_KEY;
-      
-      if (!PEXELS_API_KEY) {
-        // Return a fallback placeholder if no API key
-        return {
-          statusCode: 200,
-          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-          body: JSON.stringify({ 
-            images: [] 
-          }),
-        };
-      }
-      
-      const searchQuery = encodeURIComponent(query || 'nature');
-      const response = await fetch(
-        `https://api.pexels.com/v1/search?query=${searchQuery}&per_page=5&orientation=landscape`,
-        {
-          headers: { 'Authorization': PEXELS_API_KEY }
-        }
-      );
-      
-      if (!response.ok) {
-        return {
-          statusCode: 200,
-          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-          body: JSON.stringify({ images: [] }),
-        };
-      }
-      
-      const data = await response.json();
-      const images = (data.photos || []).map(photo => ({
-        url: photo.src.large,
-        alt: photo.alt || `Image related to ${query}`,
-        photographer: photo.photographer,
-      }));
-      
-      return {
-        statusCode: 200,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
-        body: JSON.stringify({ images }),
-      };
+    const { prompt, maxTokens = 4000 } = JSON.parse(event.body);
+    if (!prompt) {
+      return { statusCode: 400, headers, body: JSON.stringify({ error: "prompt is required" }) };
     }
 
-    // Handle text generation requests
-    const GROQ_API_KEY = process.env.GROQ_API_KEY;
-    
-    if (!GROQ_API_KEY) {
-      return { 
-        statusCode: 500, 
-        body: JSON.stringify({ error: 'GROQ_API_KEY not configured' }) 
-      };
-    }
-    
-    let systemPrompt = '';
-    let userPrompt = prompt;
-    
-    if (type === 'feed') {
-      systemPrompt = `You are a social media content generator. Generate realistic social media posts in JSON format only. No markdown, no explanation, just valid JSON array.`;
-    } else if (type === 'comments') {
-      systemPrompt = `You are a social media comment generator. Generate realistic, thoughtful comments/replies in JSON format only. No markdown, no explanation, just valid JSON array.`;
-    }
+    const provider = (process.env.AI_PROVIDER || "groq").toLowerCase();
+    let text;
 
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${GROQ_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        temperature: 0.8,
-        max_tokens: 4000,
-      }),
-    });
-
-    if (!response.ok) {
-      const error = await response.text();
-      return { 
-        statusCode: response.status, 
-        body: JSON.stringify({ error: `Groq API error: ${error}` }) 
-      };
-    }
-
-    const data = await response.json();
-    const content = data.choices[0]?.message?.content || '[]';
-    
-    // Clean and parse JSON
-    let cleanContent = content
-      .replace(/```json\n?/g, '')
-      .replace(/```\n?/g, '')
-      .trim();
-    
-    // Try to extract JSON array if wrapped in text
-    const jsonMatch = cleanContent.match(/\[[\s\S]*\]/);
-    if (jsonMatch) {
-      cleanContent = jsonMatch[0];
+    if (provider === "anthropic") {
+      if (!process.env.ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY not set");
+      text = await callAnthropic(prompt, maxTokens);
+    } else {
+      if (!process.env.GROQ_API_KEY) throw new Error("GROQ_API_KEY not set");
+      text = await callGroq(prompt, maxTokens);
     }
 
     return {
       statusCode: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
-      body: cleanContent,
+      headers,
+      body: JSON.stringify({ text }),
     };
-  } catch (error) {
+  } catch (err) {
+    console.error("Generate function error:", err);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: error.message }),
+      headers,
+      body: JSON.stringify({ error: err.message || "Internal server error" }),
     };
   }
 }
