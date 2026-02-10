@@ -19,7 +19,7 @@
 }
 
 body {
-  font-family: 'DM Sans', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   background: var(--bg);
   color: var(--text);
 }
@@ -27,7 +27,7 @@ body {
 .app-root {
   min-height: 100vh;
   background: var(--bg);
-  font-family: 'DM Sans', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   color: var(--text);
   display: flex;
   flex-direction: column;
@@ -50,7 +50,7 @@ body {
 }
 
 .logo {
-  font-family: 'Playfair Display', serif;
+  font-family: Georgia, 'Times New Roman', serif;
   font-size: 22px;
   font-weight: 700;
   color: var(--accent);
@@ -72,7 +72,7 @@ body {
   justify-content: center;
   color: white;
   font-size: 18px;
-  font-family: 'Playfair Display', serif;
+  font-family: Georgia, 'Times New Roman', serif;
 }
 
 .search-form {
@@ -87,7 +87,7 @@ body {
   padding: 10px 16px;
   border: 2px solid var(--border);
   border-radius: var(--radius);
-  font-family: 'DM Sans', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-size: 15px;
   background: var(--bg);
   color: var(--text);
@@ -102,7 +102,7 @@ body {
   padding: 10px 18px;
   border: none;
   border-radius: var(--radius);
-  font-family: 'DM Sans', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -147,7 +147,7 @@ body {
 .sidebar-section { margin-bottom: 16px; }
 
 .sidebar-section h4 {
-  font-family: 'Playfair Display', serif;
+  font-family: Georgia, 'Times New Roman', serif;
   font-size: 12px;
   color: var(--text-secondary);
   text-transform: uppercase;
@@ -163,7 +163,7 @@ body {
   padding: 7px 10px;
   border: none;
   background: none;
-  font-family: 'DM Sans', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-size: 13.5px;
   color: var(--text);
   cursor: pointer;
@@ -213,7 +213,7 @@ body {
 }
 
 .feed-topic {
-  font-family: 'Playfair Display', serif;
+  font-family: Georgia, 'Times New Roman', serif;
   font-size: 24px;
   font-weight: 700;
   color: var(--text);
@@ -242,7 +242,7 @@ body {
   border: 1px solid var(--border);
 }
 
-.wiki-text h4 { font-family: 'Playfair Display', serif; font-size: 15px; margin-bottom: 4px; }
+.wiki-text h4 { font-family: Georgia, 'Times New Roman', serif; font-size: 15px; margin-bottom: 4px; }
 
 .wiki-text p {
   font-size: 13px;
@@ -303,7 +303,7 @@ body {
 .post-time { font-size: 12px; color: var(--text-secondary); flex-shrink: 0; }
 
 .post-content {
-  font-family: 'Source Serif 4', serif;
+  font-family: Georgia, 'Times New Roman', serif;
   font-size: 15.5px;
   line-height: 1.65;
   margin-bottom: 12px;
@@ -316,7 +316,7 @@ body {
   background: none;
   border: 1.5px solid var(--blue);
   color: var(--blue);
-  font-family: 'DM Sans', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-size: 12px;
   font-weight: 600;
   padding: 5px 12px;
@@ -341,7 +341,7 @@ body {
   cursor: pointer;
   font-size: 13px;
   transition: all 0.15s;
-  font-family: 'DM Sans', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
 .reaction-btn:hover { border-color: var(--accent); }
@@ -359,7 +359,7 @@ body {
   font-size: 13px;
   cursor: pointer;
   padding: 6px 0 0;
-  font-family: 'DM Sans', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   transition: color 0.15s;
 }
 
@@ -377,7 +377,7 @@ body {
   border: 1.5px dashed var(--accent);
   border-radius: 8px;
   cursor: pointer;
-  font-family: 'DM Sans', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-size: 13px;
   color: var(--accent);
   transition: all 0.15s;
@@ -421,7 +421,7 @@ body {
   padding: 8px 12px;
   border: 1.5px solid var(--border);
   border-radius: 20px;
-  font-family: 'DM Sans', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-size: 13px;
   background: var(--bg);
   color: var(--text);
@@ -498,7 +498,7 @@ body {
 .modal-close:hover { background: var(--accent-light); color: var(--accent); }
 .modal-close.small { width: 26px; height: 26px; font-size: 13px; position: static; }
 
-.modal-content h2 { font-family: 'Playfair Display', serif; font-size: 22px; margin-bottom: 12px; }
+.modal-content h2 { font-family: Georgia, 'Times New Roman', serif; font-size: 22px; margin-bottom: 12px; }
 .modal-sub { font-size: 14px; color: var(--text-secondary); margin-bottom: 16px; }
 
 .new-post-textarea {
@@ -507,7 +507,7 @@ body {
   padding: 14px;
   border: 2px solid var(--border);
   border-radius: var(--radius);
-  font-family: 'Source Serif 4', serif;
+  font-family: Georgia, 'Times New Roman', serif;
   font-size: 15px;
   background: var(--bg);
   color: var(--text);
@@ -525,7 +525,7 @@ body {
 .deep-dive-origin { font-size: 13px; color: var(--text-secondary); }
 
 .deep-dive-quote {
-  font-family: 'Source Serif 4', serif;
+  font-family: Georgia, 'Times New Roman', serif;
   font-style: italic;
   font-size: 15px;
   color: var(--text-secondary);
@@ -537,7 +537,7 @@ body {
 }
 
 .deep-dive-body {
-  font-family: 'Source Serif 4', serif;
+  font-family: Georgia, 'Times New Roman', serif;
   font-size: 15px;
   line-height: 1.75;
   color: var(--text);
@@ -547,7 +547,7 @@ body {
 /* ─── How To Modal ────────────────────── */
 .howto-body { margin-top: 8px; }
 .howto-section { margin-bottom: 18px; }
-.howto-section h3 { font-family: 'Playfair Display', serif; font-size: 16px; margin-bottom: 4px; }
+.howto-section h3 { font-family: Georgia, 'Times New Roman', serif; font-size: 16px; margin-bottom: 4px; }
 .howto-section p { font-size: 14px; color: var(--text-secondary); line-height: 1.55; }
 
 kbd {
@@ -571,7 +571,7 @@ kbd {
 }
 
 .settings-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-.settings-header h3 { font-family: 'Playfair Display', serif; font-size: 16px; }
+.settings-header h3 { font-family: Georgia, 'Times New Roman', serif; font-size: 16px; }
 .settings-section { margin-bottom: 12px; }
 
 .settings-label {
@@ -605,7 +605,7 @@ kbd {
   border: 1.5px solid var(--border);
   border-radius: 20px;
   background: none;
-  font-family: 'DM Sans', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-size: 13px;
   cursor: pointer;
   transition: all 0.15s;
@@ -649,7 +649,7 @@ kbd {
 /* ─── Empty / Error States ────────────── */
 .empty-state { text-align: center; padding: 40px 20px; color: var(--text-secondary); }
 .empty-state .empty-icon { font-size: 48px; margin-bottom: 16px; display: block; }
-.empty-state h3 { font-family: 'Playfair Display', serif; font-size: 22px; color: var(--text); margin-bottom: 8px; }
+.empty-state h3 { font-family: Georgia, 'Times New Roman', serif; font-size: 22px; color: var(--text); margin-bottom: 8px; }
 .empty-state p { font-size: 15px; line-height: 1.5; max-width: 360px; margin: 0 auto 16px; }
 
 .error-msg {
@@ -666,13 +666,44 @@ kbd {
 .history-item { display: flex; justify-content: space-between; align-items: center; }
 .history-time { font-size: 11px; color: var(--text-secondary); }
 
+/* ─── Infinite Scroll ─────────────────── */
+.scroll-sentinel {
+  padding: 20px 0;
+  min-height: 60px;
+}
+
+.preload-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.preload-indicator.ready {
+  opacity: 0.5;
+}
+
+.preload-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
 /* ─── Footer ──────────────────────────── */
 .app-footer {
   text-align: center;
   padding: 20px;
   font-size: 13px;
   color: var(--text-secondary);
-  font-family: 'DM Sans', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   border-top: 1px solid var(--border);
 }
 
@@ -699,7 +730,7 @@ kbd {
   border: 1.5px solid var(--border);
   border-radius: 20px;
   background: var(--bg-card);
-  font-family: 'DM Sans', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-size: 13px;
   font-weight: 500;
   color: var(--text);
@@ -739,7 +770,7 @@ kbd {
   border: 1px solid var(--border);
   border-radius: 8px;
   background: none;
-  font-family: 'DM Sans', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-size: 13px;
   color: var(--text);
   cursor: pointer;
