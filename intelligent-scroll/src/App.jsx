@@ -983,13 +983,13 @@ export default function App() {
               <button className="btn primary" onClick={handleRandomTopic}>🎲 Surprise Me</button>
             </div>
           )}
+
+          {/* ─── Footer Credit ───────────────────────── */}
+          <footer className="app-footer">
+            Made by <a href="https://sudsaraswat.com" target="_blank" rel="noopener noreferrer">Sud</a>
+          </footer>
         </main>
       </div>
-
-      {/* ─── Footer Credit ───────────────────────── */}
-      <footer className="app-footer">
-        Made by <a href="https://sudsaraswat.com" target="_blank" rel="noopener noreferrer">Sud</a>
-      </footer>
 
       {/* ─── Modals ──────────────────────────────── */}
       {showNewPost && (
