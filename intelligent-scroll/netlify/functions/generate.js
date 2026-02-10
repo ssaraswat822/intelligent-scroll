@@ -18,10 +18,10 @@ async function callGroq(prompt, maxTokens) {
       Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
     },
     body: JSON.stringify({
-      model: "llama-3.3-70b-versatile",
+      model: "qwen-3-32b",
       messages: [{ role: "user", content: prompt }],
       max_tokens: maxTokens,
-      temperature: 0.9,
+      temperature: 0.8,
     }),
   });
   const data = await res.json();
