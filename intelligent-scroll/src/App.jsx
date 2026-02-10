@@ -161,7 +161,14 @@ Return ONLY valid JSON array, no markdown fences.`;
   try {
     const text = await callAI(prompt, 6000);
     if (!text) return null;
-    const clean = text.replace(/```json|```/g, "").trim();
+    // Clean up: remove markdown fences, think tags, find the JSON array
+    let clean = text.replace(/```json|```/g, "").replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+    // Find the JSON array in case there's extra text before/after
+    const start = clean.indexOf("[");
+    const end = clean.lastIndexOf("]");
+    if (start !== -1 && end !== -1) {
+      clean = clean.substring(start, end + 1);
+    }
     return JSON.parse(clean);
   } catch (e) {
     console.error("Feed generation error:", e);
@@ -649,12 +656,12 @@ export default function App() {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  const generateFeed = async (searchTopic) => {
+  const generateFeed = async (searchTopic, skipCache = false) => {
     if (!searchTopic?.trim()) return;
     const key = searchTopic.toLowerCase().trim();
 
-    // Check cache
-    if (feedCache[key]) {
+    // Check cache (unless regenerating)
+    if (!skipCache && feedCache[key]) {
       setFeed(feedCache[key].feed);
       setWikiData(feedCache[key].wiki);
       setActiveTopic(searchTopic);
@@ -754,7 +761,7 @@ export default function App() {
   const handleFollowUp = (question) => {
     setTopic(question);
     generateFeed(question);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    feedRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleShareFeed = () => {
@@ -898,9 +905,7 @@ export default function App() {
               setActivePersonas={setActivePersonas}
               onClose={() => setSidebarTab(null)}
               onRegenerate={activeTopic ? () => {
-                const key = activeTopic.toLowerCase().trim();
-                setFeedCache(prev => { const n = {...prev}; delete n[key]; return n; });
-                generateFeed(activeTopic);
+                generateFeed(activeTopic, true);
               } : null}
               isLoading={isLoading}
             />
