@@ -1,119 +1,123 @@
-# Intelligent Scroll 🧠
+# Intelligent Scroll
 
-An AI-powered social media feed generator. Enter any topic and watch as AI creates realistic posts and discussions - or write your own post and get instant AI-generated comments!
+Type in a subject. Get a social timeline about it — facts, arguments, replies, explainers — that keeps
+writing itself as long as you keep scrolling.
 
-## Features
+It looks like a Twitter/X feed, except every account on it is writing about the thing you asked for.
 
-- **🔍 Topic Explorer** - Generate feeds on any topic
-- **✍️ New Post** - Write posts and get AI-generated comments
-- **💬 Threaded Comments** - Realistic discussions with multiple perspectives
-- **⚡ Ultra-Fast** - Powered by Groq's Llama models
-- **♾️ Infinite Scroll** - Pre-loaded content for instant "Load More"
+## What it does
 
-## Tech Stack
+- **Any subject.** Search a science, a war, a food, a person, or click a follow-up question on any post
+  to spin off a whole new feed.
+- **It doesn't end.** Batches are generated ahead of the reader and released as you approach the bottom.
+  Each batch is pushed through a different lens (origins, misconceptions, open questions, failures, the
+  money, what's next, and a dozen more) and is told what has already been posted, so the timeline keeps
+  finding new ground instead of restating its own greatest hits.
+- **Grounded.** Wikipedia is fetched for the subject and used as reference material for generation, and
+  shown as a source card at the top of the feed.
+- **Conversation, not a listicle.** Posts carry replies that disagree with each other. Reply to any post
+  and the personas reply back. Post your own take from the composer and the timeline responds to that.
+- **Deep dives.** Any post expands into a long-form version, written on demand.
+- **Tunable.** A depth slider runs from group-chat to peer-review, and you choose which personas show up.
+- **Feed mechanics you'd expect.** Kind tabs (facts / debate / explainers), bookmarks, likes, reposts,
+  light and dark themes, deep links (`/?q=black+holes`), and keyboard shortcuts.
 
-- **Frontend**: React + Vite
-- **Backend**: Netlify Functions (serverless)
-- **AI**: Groq API (Llama 3.3 70B)
-- **Hosting**: Netlify
+### Keyboard shortcuts
 
-## Deploy to Netlify
+| Key | Action |
+| --- | --- |
+| `/` | Focus search |
+| `n` | Compose a post |
+| `r` | Random subject |
+| `j` / `k` | Next / previous post |
+| `Esc` | Close dialogs |
 
-### 1. Get a Groq API Key
-
-1. Go to [console.groq.com](https://console.groq.com)
-2. Sign up / Log in
-3. Create an API key
-
-### 2. Deploy
-
-#### Option A: One-Click Deploy
-
-[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start)
-
-#### Option B: Manual Deploy
-
-1. Push this code to a GitHub repository
-
-2. Go to [app.netlify.com](https://app.netlify.com)
-
-3. Click "Add new site" → "Import an existing project"
-
-4. Connect your GitHub repo
-
-5. Configure build settings:
-   - **Build command**: `npm run build`
-   - **Publish directory**: `dist`
-
-6. Add environment variable:
-   - Go to Site settings → Environment variables
-   - Add: `GROQ_API_KEY` = your Groq API key
-
-7. Deploy!
-
-### 3. Local Development
+## Running it
 
 ```bash
-# Install dependencies
 npm install
-
-# Create .env file
-echo "GROQ_API_KEY=your_key_here" > .env
-
-# Install Netlify CLI
-npm install -g netlify-cli
-
-# Run locally with functions
-netlify dev
+cp .env.example .env      # add a GROQ_API_KEY
+npm run dev               # http://localhost:5173
 ```
 
-## Project Structure
+`npm run dev` serves the `/api/generate` endpoint itself through a Vite middleware, so the Netlify CLI is
+not needed for local development. If you'd rather run the real function, `netlify dev` also works.
+
+### Demo mode
+
+Without an API key the app still runs. It assembles the feed from the Wikipedia article for the subject
+plus discussion templates, and says so in a banner. Nothing is fabricated in this mode: the factual
+sentences come verbatim from Wikipedia and the rest is framing and argument. It exists so the app is never
+a dead screen — and so you can try it before wiring up a provider.
+
+## Providers
+
+Set one of these and the app picks it up automatically:
+
+| Variable | Default model | Notes |
+| --- | --- | --- |
+| `GROQ_API_KEY` | `llama-3.3-70b-versatile` | Recommended. Fast enough to finish a batch inside Netlify's 10s function limit. |
+| `ANTHROPIC_API_KEY` | `claude-3-5-haiku-latest` | Better prose, slower. |
+| `OPENAI_API_KEY` | `gpt-4o-mini` | |
+
+Override with `AI_PROVIDER` (`groq` \| `anthropic` \| `openai`), and the model with `AI_MODEL` or a
+provider-specific `GROQ_MODEL` / `ANTHROPIC_MODEL` / `OPENAI_MODEL`.
+
+Keys are only ever read server-side, in the Netlify function or the dev middleware. They are never sent to
+the browser.
+
+## Deploying to Netlify
+
+1. Push this repo to GitHub and import it at [app.netlify.com](https://app.netlify.com).
+2. Build command `npm run build`, publish directory `dist`. Both are already in `netlify.toml`, along with
+   the `/api/*` → `/.netlify/functions/*` redirect.
+3. Add `GROQ_API_KEY` under **Site settings → Environment variables**.
+4. Deploy.
+
+> Netlify's synchronous functions time out at 10 seconds. That's why a batch is six posts and why deep
+> dives are generated on demand rather than bundled into every batch. If you switch to a slower provider
+> and start seeing timeouts, lower `BATCH_SIZE` in `src/hooks/useInfiniteFeed.js`.
+
+## How the endless feed works
+
+`src/hooks/useInfiniteFeed.js` is the interesting part.
+
+- A **session** holds the subject, its Wikipedia context, a batch counter, a set of content signatures,
+  and a rolling list of what has already been posted.
+- The **pump** generates batches until two are queued ahead of the reader, and only one pump ever runs at
+  a time. Failures back off and retry; three consecutive failures surface a retry button rather than
+  silently ending the feed.
+- Every post is checked against two **signatures** — its opening text and a bag of its rarest words — so
+  the same fact reworded gets dropped instead of appearing twice.
+- **Lens rotation** (`src/lib/prompt.js`) gives each batch a different set of angles to cover, and the
+  prompt carries the last eighteen posts as ground to avoid.
+- Responses are parsed **tolerantly** (`src/lib/parse.js`): a reply truncated mid-array still yields every
+  object that finished, so a token limit slows the feed instead of breaking it.
+- Delivery is driven by both a scroll listener and a low-frequency interval. The interval matters: if a
+  batch finishes while the reader is already sitting at the bottom, no scroll event would ever fire to
+  release it.
+
+## Project structure
 
 ```
 intelligent-scroll/
-├── index.html              # Entry HTML
-├── src/
-│   ├── main.jsx           # React entry
-│   └── App.jsx            # Main app component
-├── netlify/
-│   └── functions/
-│       └── generate.js    # Serverless API function
-├── netlify.toml           # Netlify config
-├── package.json
-└── vite.config.js
-```
-
-## API Configuration
-
-The serverless function (`netlify/functions/generate.js`) handles:
-- Secure API key storage (server-side only)
-- Groq API calls
-- JSON parsing and cleaning
-
-### Groq Models (in order of speed)
-
-| Model | Speed | Quality |
-|-------|-------|---------|
-| `llama-3.1-8b-instant` | Fastest | Good |
-| `llama-3.3-70b-versatile` | Fast | Excellent (default) |
-| `mixtral-8x7b-32768` | Fast | Great |
-
-To change models, edit `netlify/functions/generate.js`.
-
-## Optional: Add Wikipedia Integration
-
-To make posts more educational, you can enhance the serverless function to fetch Wikipedia content:
-
-```javascript
-// In generate.js, add before the Groq call:
-const wikiResponse = await fetch(
-  `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(topic)}`
-);
-const wikiData = await wikiResponse.json();
-const context = wikiData.extract || '';
-
-// Then include context in the prompt:
-const enhancedPrompt = `Context from Wikipedia: ${context}\n\n${prompt}`;
+├── index.html
+├── netlify/functions/generate.js   # serverless endpoint
+├── shared/ai.js                    # provider calls, shared with the dev middleware
+├── vite.config.js                  # includes the dev /api/generate middleware
+└── src/
+    ├── App.jsx                     # layout, routing, scroll watcher, shortcuts
+    ├── hooks/useInfiniteFeed.js    # the feed engine
+    ├── components/                 # Post, Composer, rails, modals, icons
+    ├── lib/
+    │   ├── api.js                  # /api/generate + Wikipedia clients
+    │   ├── prompt.js               # prompts, lenses, tone levels
+    │   ├── parse.js                # tolerant JSON extraction
+    │   ├── offline.js              # demo-mode generator
+    │   ├── personas.js
+    │   ├── topics.js
+    │   └── util.js
+    └── styles.css
 ```
 
 ## License
