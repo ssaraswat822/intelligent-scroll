@@ -119,6 +119,61 @@ const ANGLES = [
       `Watch what gets cheap. That predicts more than any roadmap.`,
     ],
   },
+  {
+    name: "vocabulary",
+    probe: (t) => `Which word in ${t} causes the most confusion by meaning two different things?`,
+    take: (t) =>
+      `A surprising share of arguments about ${t} are two people using one word for two concepts and never noticing.`,
+    beats: (t) => [
+      `The terminology of ${t} deserves an audit.`,
+      `Several terms were coined before the thing they describe was understood, and they have been quietly misleading students ever since.`,
+      `Renaming is politically impossible, so everyone just learns the exceptions.`,
+    ],
+  },
+  {
+    name: "teaching",
+    probe: (t) => `What's the best order to learn ${t} in, and why isn't it the usual one?`,
+    take: (t) =>
+      `The standard curriculum for ${t} is ordered by historical accident, not by what builds understanding fastest.`,
+    beats: (t) => [
+      `On how ${t} gets taught.`,
+      `Introductions tend to start with whatever was discovered first, which is rarely the most intuitive entry point.`,
+      `The people who understand it best usually came in sideways, from a problem they actually cared about.`,
+    ],
+  },
+  {
+    name: "outsiders",
+    probe: (t) => `Which amateur or outsider contribution to ${t} turned out to matter most?`,
+    take: (t) =>
+      `${t} has a long record of outsiders being right early and being credited late, if at all.`,
+    beats: (t) => [
+      `The amateur tradition in ${t}.`,
+      `For long stretches the serious work happened outside institutions, funded by curiosity and stubbornness.`,
+      `Professionalisation raised the floor and, arguably, lowered the ceiling on how strange an idea is allowed to be.`,
+    ],
+  },
+  {
+    name: "instruments",
+    probe: (t) => `Which single instrument or technique unlocked the most progress in ${t}?`,
+    take: (t) =>
+      `Progress in ${t} tracks instrumentation far more closely than it tracks theory. Build a better detector and the questions rewrite themselves.`,
+    beats: (t) => [
+      `The tools behind ${t}.`,
+      `Almost every step change here follows a new way of seeing or measuring, not a new way of thinking.`,
+      `Which means the interesting bottleneck is usually engineering wearing a lab coat.`,
+    ],
+  },
+  {
+    name: "geography",
+    probe: (t) => `Why did ${t} develop where it did rather than somewhere else?`,
+    take: (t) =>
+      `The geography of ${t} is not an accident of genius. It follows trade routes, patronage, and who happened to have a surplus.`,
+    beats: (t) => [
+      `Where ${t} came from, literally.`,
+      `Ideas cluster around money, safety, and the freedom to be wrong in public for a few years.`,
+      `Move those three things and the map redraws within a generation.`,
+    ],
+  },
 ];
 
 const SHORT_REACTIONS = [
@@ -128,6 +183,16 @@ const SHORT_REACTIONS = [
   (t) => `every time I think I understand ${t} I find another layer underneath`,
   (t) => `${t} explained badly is boring. ${t} explained well is unreasonably good.`,
   (t) => `whoever decided the standard intro to ${t} should start with the hardest part: why`,
+  (t) => `the gap between the popular version of ${t} and the working version is enormous`,
+  (t) => `three tabs deep on ${t} and I have more questions than I started with. correct outcome tbh`,
+  (t) => `${t} is proof that "obvious in hindsight" is doing a lot of heavy lifting`,
+  (t) => `nobody warns you that ${t} is mostly arguing about definitions`,
+  (t) => `started reading about ${t} to settle a bet. the bet is now much worse`,
+  (t) => `the more confident someone sounds about ${t}, the less I trust the summary`,
+  (t) => `${t} has at least four separate stories inside it and they keep getting merged`,
+  (t) => `honestly ${t} should come with a warning about how deep the footnotes go`,
+  (t) => `unpopular: the interesting bit of ${t} is the part everyone calls a technicality`,
+  (t) => `${t} keeps turning out to be a measurement problem in a costume`,
 ];
 
 const REPLY_TEMPLATES = [
@@ -144,11 +209,18 @@ const REPLY_TEMPLATES = [
 ];
 
 const FOLLOW_UPS = [
-  (t, angle) => `What's the strongest counterargument to the standard view of ${t}?`,
+  (t) => `What's the strongest counterargument to the standard view of ${t}?`,
   (t) => `Who are the people currently doing the most interesting work on ${t}?`,
   (t, angle) => `How did the ${angle} of ${t} get settled — or is it still open?`,
   (t) => `What would you need to believe for ${t} to be completely wrong?`,
   (t) => `Where does ${t} touch everyday life without anyone noticing?`,
+  (t) => `Which field borrowed the most from ${t}?`,
+  (t) => `What did people believe about ${t} a century ago?`,
+  (t) => `What's the best worked example to learn ${t} from?`,
+  (t) => `Where does the funding for ${t} actually come from?`,
+  (t) => `What breaks first when you push ${t} to its limits?`,
+  (t) => `Which popular explanation of ${t} should be retired?`,
+  (t) => `What would settle the biggest open argument in ${t}?`,
 ];
 
 const splitSentences = (text) =>
@@ -158,29 +230,77 @@ const splitSentences = (text) =>
     .map((s) => s.trim())
     .filter((s) => s.length > 45);
 
-const personaVoice = (persona, sentence, topic) => {
-  switch (persona) {
-    case "academic":
-      return `From the reference literature on ${topic}: ${sentence}`;
-    case "journalist":
-      return `Worth restating plainly, because coverage keeps garbling it — ${sentence.charAt(0).toLowerCase()}${sentence.slice(1)}`;
-    case "historian":
-      return `Context people skip: ${sentence}`;
-    case "techie":
-      return `Baseline definition before anyone argues in the replies: ${sentence}`;
-    case "skeptic":
-      return `The claim, stated as neutrally as I can manage: ${sentence}\n\nNow, what's the evidence actually resting on?`;
-    case "contrarian":
-      return `Everyone quotes this line about ${topic} — ${sentence} — and then reasons from it like it's the whole picture.`;
-    case "enthusiast":
-      return `TIL properly: ${sentence}\n\nAnd that's the boring version.`;
-    default:
-      return `so apparently: ${sentence}`;
-  }
+const VOICES = {
+  academic: [
+    (s, t) => `From the reference literature on ${t}: ${s}`,
+    (s) => `Stating the established position first, since the replies always skip it: ${s}`,
+    (s, t) => `The standard characterisation of ${t} runs: ${s}\n\nEverything interesting happens at the edges of that sentence.`,
+  ],
+  journalist: [
+    (s) => `Worth restating plainly, because coverage keeps garbling it — ${lower(s)}`,
+    (s, t) => `The one-paragraph version of ${t} that most articles never manage: ${s}`,
+    (s) => `Filed under things that sound made up but aren't: ${s}`,
+  ],
+  historian: [
+    (s) => `Context people skip: ${s}`,
+    (s, t) => `Before the modern framing of ${t} took hold, this was the working description: ${s}`,
+    (s) => `For the record, and it matters later: ${s}`,
+  ],
+  techie: [
+    (s) => `Baseline definition before anyone argues in the replies: ${s}`,
+    (s) => `Spec sheet version: ${s}`,
+    (s, t) => `If you're implementing anything near ${t}, start here: ${s}`,
+  ],
+  skeptic: [
+    (s) => `The claim, stated as neutrally as I can manage: ${s}\n\nNow — what is the evidence actually resting on?`,
+    (s) => `Read this carefully and notice how much of it is definition rather than finding: ${s}`,
+    (s) => `Fine, but load-bearing question: ${s}\n\nWho measured that, and how?`,
+  ],
+  contrarian: [
+    (s, t) => `Everyone quotes this line about ${t} — ${s} — and then reasons from it like it's the whole picture.`,
+    (s) => `This gets repeated constantly: ${s}\n\nIt's true and it's also doing a lot of quiet work.`,
+    (s, t) => `The consensus on ${t} compresses to: ${s} Which is exactly why it gets misapplied.`,
+  ],
+  enthusiast: [
+    (s) => `TIL properly: ${s}\n\nAnd that's the boring version.`,
+    (s) => `Okay this one is genuinely great: ${s}`,
+    (s, t) => `Reading about ${t} and had to stop at this: ${s}`,
+  ],
+  casual: [
+    (s) => `so apparently: ${s}`,
+    (s) => `found this and it reordered my brain a little: ${s}`,
+    (s) => `wait i did not know this: ${s}`,
+  ],
+};
+
+const lower = (s) => `${s.charAt(0).toLowerCase()}${s.slice(1)}`;
+
+const personaVoice = (persona, sentence, topic, variant = 0) => {
+  const options = VOICES[persona] || VOICES.casual;
+  return options[variant % options.length](sentence, topic);
 };
 
 const pickPersona = (personas, preferred) =>
   personas.includes(preferred) ? preferred : randomChoice(personas);
+
+/**
+ * Every distinct thing this generator can say about a topic, in a fixed order,
+ * so successive batches can walk the list instead of drawing at random and
+ * colliding. One post consumes exactly one item.
+ */
+const materialFor = (topic) => {
+  const items = [];
+  ANGLES.forEach((angle, index) => {
+    const beats = angle.beats(topic);
+    items.push({ kind: "take", text: angle.take(topic), angle });
+    items.push({ kind: "question", text: angle.probe(topic), angle });
+    items.push({ kind: "explainer", text: beats.join("\n\n"), angle });
+    items.push({ kind: "fact", text: beats[1], angle });
+    items.push({ kind: "data", text: beats[2], angle });
+    items.push({ kind: "take", text: SHORT_REACTIONS[index % SHORT_REACTIONS.length](topic), angle });
+  });
+  return items;
+};
 
 const buildReplies = (topic, angle, count) =>
   shuffle(REPLY_TEMPLATES)
@@ -205,66 +325,70 @@ export const generateOfflineDeepDive = ({ topic, context = "", postContent = "" 
   ].join("\n\n");
 };
 
+const personaForKind = (kind, personas) => {
+  switch (kind) {
+    case "question":
+      return pickPersona(personas, "skeptic");
+    case "take":
+      return pickPersona(personas, "contrarian");
+    case "explainer":
+      return pickPersona(personas, "journalist");
+    case "til":
+      return pickPersona(personas, "enthusiast");
+    case "fact":
+      return pickPersona(personas, "academic");
+    default:
+      return randomChoice(personas);
+  }
+};
+
+// Roughly a third of each batch is built from the reference article when one is
+// available, so the timeline keeps some real substance in it.
+const SENTENCE_SHARE = 3;
+
 /**
- * Produces one batch. `batchIndex` walks the angle list and the sentence pool
- * so successive batches keep drifting into new material.
+ * Produces one batch. Both the article sentences and the template material are
+ * walked with cursors derived from `batchIndex`, so a batch consumes new
+ * material rather than re-drawing what earlier batches already used.
  */
-export const generateOfflineBatch = ({ topic, context = "", personas, count = 7, batchIndex = 0 }) => {
+export const generateOfflineBatch = ({ topic, context = "", personas, count = 6, batchIndex = 0 }) => {
   const sentences = splitSentences(context);
-  const angles = [0, 1, 2].map((i) => ANGLES[(batchIndex * 3 + i) % ANGLES.length]);
+  const material = materialFor(topic);
   const posts = [];
 
-  for (let i = 0; i < count; i++) {
-    const angle = angles[i % angles.length];
-    const sentence = sentences.length ? sentences[(batchIndex * count + i) % sentences.length] : null;
-    const slot = i % 7;
-    let kind = "take";
-    let content;
+  const sentenceQuota = sentences.length ? Math.max(1, Math.round(count / SENTENCE_SHARE)) : 0;
+  let sentenceCursor = batchIndex * sentenceQuota;
+  let materialCursor = batchIndex * (count - sentenceQuota);
 
-    if (slot === 0) {
-      kind = "til";
-      content = sentence
-        ? personaVoice(pickPersona(personas, "enthusiast"), sentence, topic)
-        : `${topic} is one of those subjects where the first honest step is admitting how much of it is contested.`;
-    } else if (slot === 1) {
-      kind = "take";
-      content = angle.take(topic);
-    } else if (slot === 2) {
-      kind = "question";
-      content = angle.probe(topic);
-    } else if (slot === 3) {
-      kind = "fact";
-      content = sentence
-        ? personaVoice(pickPersona(personas, "academic"), sentence, topic)
-        : angle.beats(topic).slice(0, 2).join(" ");
-    } else if (slot === 4) {
-      kind = "explainer";
-      content = angle.beats(topic).join("\n\n");
-    } else if (slot === 5) {
-      kind = "take";
-      content = randomChoice(SHORT_REACTIONS)(topic);
+  for (let i = 0; i < count; i++) {
+    const useSentence = sentenceQuota > 0 && i % SENTENCE_SHARE === 0 && posts.length < count;
+    let kind;
+    let content;
+    let angle;
+
+    if (useSentence) {
+      const cursor = batchIndex * count + i;
+      kind = i === 0 ? "til" : "fact";
+      angle = ANGLES[cursor % ANGLES.length];
     } else {
-      kind = "data";
-      content = sentence
-        ? `${angle.probe(topic)}\n\nStarting point, from the reference material: ${sentence}`
-        : angle.probe(topic);
+      const item = material[materialCursor++ % material.length];
+      kind = item.kind;
+      angle = item.angle;
+      content = item.text;
     }
 
-    const persona =
-      kind === "question"
-        ? pickPersona(personas, "skeptic")
-        : kind === "take"
-        ? pickPersona(personas, "contrarian")
-        : kind === "explainer"
-        ? pickPersona(personas, "journalist")
-        : randomChoice(personas);
+    const persona = personaForKind(kind, personas);
+    if (useSentence) {
+      const sentence = sentences[sentenceCursor++ % sentences.length];
+      content = personaVoice(persona, sentence, topic, batchIndex * count + i);
+    }
 
     posts.push({
       persona,
       kind,
       content,
       replies: i % 2 === 0 ? buildReplies(topic, angle, randomInt(2, 4)) : [],
-      followUp: randomChoice(FOLLOW_UPS)(topic, angle.name),
+      followUp: FOLLOW_UPS[(batchIndex * count + i) % FOLLOW_UPS.length](topic, angle.name),
     });
   }
 

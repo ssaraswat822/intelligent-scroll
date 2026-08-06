@@ -53,7 +53,7 @@ const devApi = (env) => ({
         return send(res, 200, result);
       } catch (err) {
         if (err instanceof NoProviderError || err.code === "NO_PROVIDER") {
-          return send(res, 501, { error: err.message, code: "NO_PROVIDER" });
+          return send(res, 200, { error: err.message, code: "NO_PROVIDER" });
         }
         server.config.logger.error(`/api/generate failed: ${err.message}`);
         return send(res, 502, { error: err.message || "Generation failed" });

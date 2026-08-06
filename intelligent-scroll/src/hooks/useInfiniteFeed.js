@@ -22,6 +22,7 @@ const BATCH_SIZE = 6;
 const BUFFER_TARGET = BATCH_SIZE * 2;
 const MAX_AVOID = 18;
 const MAX_FAILURES = 3;
+const MAX_EMPTY_BATCHES = 3;
 const VALID_KINDS = new Set(["fact", "take", "question", "explainer", "til", "data"]);
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -121,6 +122,7 @@ export function useInfiniteFeed({ eduLevel, personas }) {
   const [isFetching, setIsFetching] = useState(false);
   const [bufferCount, setBufferCount] = useState(0);
   const [offline, setOffline] = useState(false);
+  const [exhausted, setExhausted] = useState(false);
   const [batchesLoaded, setBatchesLoaded] = useState(0);
 
   const runIdRef = useRef(0);
@@ -129,7 +131,14 @@ export function useInfiniteFeed({ eduLevel, personas }) {
   const postsRef = useRef([]);
   const pumpRef = useRef(null);
   const failuresRef = useRef(0);
+  const emptyRef = useRef(0);
+  const exhaustedRef = useRef(false);
   const offlineRef = useRef(false);
+
+  const markExhausted = useCallback((value) => {
+    exhaustedRef.current = value;
+    setExhausted(value);
+  }, []);
 
   // Settings change between renders; the pump reads them through refs so an
   // in-flight generation always uses the latest values.
@@ -189,7 +198,11 @@ export function useInfiniteFeed({ eduLevel, personas }) {
       accepted.push(post);
     }
 
-    if (!accepted.length) throw new Error("No usable posts in response");
+    if (!accepted.length) {
+      const err = new Error("Nothing new in that batch");
+      err.code = raw.length ? "NO_NEW" : "EMPTY";
+      throw err;
+    }
     if (session.avoid.length > MAX_AVOID * 2) session.avoid = session.avoid.slice(-MAX_AVOID);
     return accepted;
   }, []);
@@ -201,7 +214,7 @@ export function useInfiniteFeed({ eduLevel, personas }) {
   const pump = useCallback(() => {
     if (pumpRef.current) return pumpRef.current;
     const session = sessionRef.current;
-    if (!session.topic) return Promise.resolve();
+    if (!session.topic || exhaustedRef.current) return Promise.resolve();
 
     const task = (async () => {
       setIsFetching(true);
@@ -225,6 +238,20 @@ export function useInfiniteFeed({ eduLevel, personas }) {
             }
           } catch (err) {
             if (session.runId !== runIdRef.current) return;
+
+            // Every post in the batch was a repeat of something already shown.
+            // A couple of these in a row means the source of material is spent,
+            // which is a boundary to state plainly rather than an error.
+            if (err.code === "NO_NEW") {
+              emptyRef.current += 1;
+              if (emptyRef.current >= MAX_EMPTY_BATCHES) {
+                markExhausted(true);
+                return;
+              }
+              continue;
+            }
+            emptyRef.current = 0;
+
             failuresRef.current += 1;
             if (failuresRef.current >= MAX_FAILURES) {
               setError(err.message || "Could not generate more posts");
@@ -243,7 +270,7 @@ export function useInfiniteFeed({ eduLevel, personas }) {
       pumpRef.current = null;
     });
     return pumpRef.current;
-  }, [commitPosts, generateBatch]);
+  }, [commitPosts, generateBatch, markExhausted]);
 
   /** Moves queued posts onto the screen and tops the queue back up. */
   const loadMore = useCallback(() => {
@@ -267,6 +294,7 @@ export function useInfiniteFeed({ eduLevel, personas }) {
       bufferRef.current = [];
       postsRef.current = [];
       failuresRef.current = 0;
+      emptyRef.current = 0;
 
       setTopic(nextTopic);
       setPosts([]);
@@ -274,6 +302,7 @@ export function useInfiniteFeed({ eduLevel, personas }) {
       setError("");
       setBufferCount(0);
       setBatchesLoaded(0);
+      markExhausted(false);
       setPhase("loading");
 
       const ctx = await fetchTopicContext(nextTopic);
@@ -283,17 +312,19 @@ export function useInfiniteFeed({ eduLevel, personas }) {
 
       await pump();
     },
-    [pump]
+    [markExhausted, pump]
   );
 
   const retry = useCallback(() => {
     failuresRef.current = 0;
+    emptyRef.current = 0;
+    markExhausted(false);
     setError("");
     if (postsRef.current.length === 0 && sessionRef.current.topic) {
       setPhase("loading");
     }
     pump();
-  }, [pump]);
+  }, [markExhausted, pump]);
 
   const generateReplies = useCallback(async (postContent) => {
     const { personas: activePersonas } = settingsRef.current;
@@ -428,6 +459,7 @@ export function useInfiniteFeed({ eduLevel, personas }) {
     phase,
     error,
     offline,
+    exhausted,
     isFetching,
     bufferCount,
     batchesLoaded,

@@ -39,8 +39,10 @@ export async function handler(event) {
     });
     return reply(200, { text, provider });
   } catch (err) {
+    // A missing key is a capability answer, not a failure: 200 keeps it out of
+    // the browser console while the client switches to demo mode.
     if (err instanceof NoProviderError || err.code === "NO_PROVIDER") {
-      return reply(501, { error: err.message, code: "NO_PROVIDER" });
+      return reply(200, { error: err.message, code: "NO_PROVIDER" });
     }
     console.error("generate failed:", err);
     return reply(502, { error: err.message || "Generation failed" });

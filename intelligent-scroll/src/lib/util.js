@@ -53,20 +53,24 @@ const normalize = (text) =>
     .trim();
 
 /**
- * Two signatures per post: the leading text (catches verbatim repeats) and a
- * sorted bag of its rarest words (catches the same fact reworded).
+ * Two signatures per post: the normalised text (verbatim repeats) and a bag of
+ * its longest words (the same fact reworded). Length is a cheap proxy for how
+ * distinctive a word is, which matters because posts often share a lead-in —
+ * keying on the opening characters would merge posts that only look alike.
  */
 export const signaturesFor = (text) => {
   const norm = normalize(text);
   if (!norm) return [];
-  const prefix = norm.slice(0, 60);
-  const words = norm
-    .split(" ")
-    .filter((w) => w.length > 3 && !STOP_WORDS.has(w))
+
+  const distinctive = [
+    ...new Set(norm.split(" ").filter((w) => w.length > 3 && !STOP_WORDS.has(w))),
+  ]
+    .sort((a, b) => b.length - a.length || a.localeCompare(b))
+    .slice(0, 10)
     .sort()
-    .slice(0, 8)
     .join("-");
-  return words ? [prefix, words] : [prefix];
+
+  return distinctive ? [norm, distinctive] : [norm];
 };
 
 /** A short label for a post, used to tell the model what ground is already covered. */

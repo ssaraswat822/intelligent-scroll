@@ -70,6 +70,7 @@ export default function App() {
     phase,
     error,
     offline,
+    exhausted,
     isFetching,
     loadMore,
     start,
@@ -150,7 +151,7 @@ export default function App() {
    * batch finishes generating, no scroll event would ever fire to release it.
    */
   useEffect(() => {
-    if (phase !== "ready" || tab === "saved") return;
+    if (phase !== "ready" || tab === "saved" || exhausted) return;
 
     let frame = 0;
     const check = () => {
@@ -174,7 +175,7 @@ export default function App() {
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
     };
-  }, [phase, tab, loadMore]);
+  }, [phase, tab, exhausted, loadMore]);
 
   const focusSearch = useCallback(() => {
     const input = heroSearchRef.current || railSearchRef.current;
@@ -256,7 +257,9 @@ export default function App() {
             <h1>{topic || "Home"}</h1>
             <p>
               {topic
-                ? `${posts.length} posts${isFetching ? " · writing more…" : " · endless"}`
+                ? `${posts.length} posts${
+                    isFetching ? " · writing more…" : exhausted ? "" : " · endless"
+                  }`
                 : "Type a subject and the timeline fills in"}
             </p>
           </div>
@@ -397,6 +400,17 @@ export default function App() {
                     <span>{error}</span>
                     <button className="btn btn--sm" onClick={retry}>
                       Retry
+                    </button>
+                  </div>
+                ) : exhausted ? (
+                  <div className="feed__error">
+                    <span>
+                      {offline
+                        ? "Demo mode has run out of fresh angles on this subject. Add an API key for a genuinely endless feed."
+                        : "The timeline started repeating itself, so it stopped here."}
+                    </span>
+                    <button className="btn btn--sm" onClick={retry}>
+                      Keep going
                     </button>
                   </div>
                 ) : (

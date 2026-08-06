@@ -89,10 +89,13 @@ const fetchFullExtract = async (title) => {
   return (page?.extract || "").replace(/\n{2,}/g, "\n").slice(0, 6000);
 };
 
+/** Follow-up chips are questions, not article titles — skip the direct lookup. */
+const looksLikeSentence = (text) => /\?$/.test(text.trim()) || text.trim().split(/\s+/).length > 6;
+
 /** Wikipedia context for a topic. Returns null when nothing usable is found. */
 export const fetchTopicContext = async (topic) => {
   try {
-    let summary = await fetchSummary(topic);
+    let summary = looksLikeSentence(topic) ? null : await fetchSummary(topic);
     if (!summary) {
       const title = await searchTitle(topic);
       if (title) summary = await fetchSummary(title);
