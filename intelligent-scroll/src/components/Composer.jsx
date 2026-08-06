@@ -42,7 +42,7 @@ export default function Composer({ topic, onPost, autoFocus = false }) {
         <textarea
           ref={areaRef}
           className="composer__input"
-          placeholder={topic ? `Add your take on ${topic}…` : "What are you curious about?"}
+          placeholder={topic ? "Add your take" : "What are you curious about?"}
           value={value}
           maxLength={MAX_LENGTH}
           onChange={(e) => setValue(e.target.value)}

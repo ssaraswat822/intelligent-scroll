@@ -111,6 +111,12 @@ a {
   scrollbar-width: thin;
 }
 
+/* Without this the cards shrink to fit the viewport and clip their own
+   contents, rather than letting the rail scroll. */
+.rail__sticky > * {
+  flex: 0 0 auto;
+}
+
 .rail--right .rail__sticky {
   padding: 8px 0 24px 24px;
 }
@@ -379,8 +385,10 @@ a {
   line-height: 1.45;
 }
 
+/* The box is one line tall until it grows, so the placeholder must not wrap. */
 .composer__input::placeholder {
   color: var(--muted);
+  white-space: nowrap;
 }
 
 .composer__foot {
@@ -1281,6 +1289,18 @@ kbd {
   .tabs__item {
     min-width: 84px;
     font-size: 14.5px;
+  }
+  /* Six action buttons do not fit a phone at desktop padding. */
+  .actions {
+    gap: 0;
+  }
+  .action {
+    padding: 6px 6px 6px 4px;
+    gap: 4px;
+    font-size: 12.5px;
+  }
+  .actions__tail {
+    gap: 0;
   }
   .hero {
     padding: 32px 18px;
