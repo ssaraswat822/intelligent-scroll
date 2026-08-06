@@ -1,11 +1,31 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Intelligent Scroll</title>
-    <meta name="description" content="AI-powered social feed generator. Enter any topic and get a realistic feed with diverse perspectives, threaded discussions, and deep dives." />
+    <title>Intelligent Scroll — an endless feed about anything</title>
+    <meta
+      name="description"
+      content="Type any subject and get a social timeline about it: facts, arguments, replies and explainers, generated endlessly as you scroll."
+    />
+    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta property="og:title" content="Intelligent Scroll" />
+    <meta
+      property="og:description"
+      content="An endless, AI-written timeline about any subject you type in."
+    />
+    <meta property="og:type" content="website" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <script>
+      // Applied before first paint so the theme never flashes.
+      try {
+        var saved = JSON.parse(localStorage.getItem("is:theme"));
+        if (saved === "light" || saved === "dark") {
+          document.documentElement.dataset.theme = saved;
+        }
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>
